@@ -873,32 +873,33 @@ class BOSBudgetAnalyzer:
         # Hitung jasa sesungguhnya
         jasa_sesungguhnya = total_belanja_jasa - total_honor
         
-        # Update summary dengan informasi lengkap
-        # UBAH BAGIAN INI - Layout horizontal
-        # Frame kiri untuk nama sekolah
-        left_frame = tk.Frame(self.summary_frame, bg='#ecf0f1')
-        left_frame.pack(side='left', fill='y', padx=(10, 20))
-        
-        sekolah_label = tk.Label(left_frame, text=f"SEKOLAH {self.nama_sekolah}", 
-                                font=('Arial', 12, 'bold'), bg='#ecf0f1', fg='#2c3e50')
-        sekolah_label.pack(anchor='w')
+        # Update summary dengan informasi lengkap - urutan vertikal
+        # Baris 1: Total Belanja Jasa
         self.total_label.config(text=f"Total Belanja Jasa: Rp {total_belanja_jasa:,}".replace(',', '.'))
         
-        # Tambahkan label untuk pembayaran honor dan jasa sesungguhnya
+        # Baris 2: Pembayaran Honor
         if hasattr(self, 'honor_label'):
             self.honor_label.destroy()
-        if hasattr(self, 'jasa_sesungguhnya_label'):
-            self.jasa_sesungguhnya_label.destroy()
-        
         self.honor_label = tk.Label(self.summary_frame, 
                                 text=f"Pembayaran Honor: Rp {total_honor:,}".replace(',', '.'), 
                                 font=('Arial', 14, 'bold'), bg='#ecf0f1')
         self.honor_label.pack(pady=5)
         
+        # Baris 3: Jasa Sesungguhnya
+        if hasattr(self, 'jasa_sesungguhnya_label'):
+            self.jasa_sesungguhnya_label.destroy()
         self.jasa_sesungguhnya_label = tk.Label(self.summary_frame, 
                                             text=f"Jasa Sesungguhnya: Rp {jasa_sesungguhnya:,}".replace(',', '.'), 
                                             font=('Arial', 14, 'bold'), bg='#ecf0f1', fg='#e74c3c')
         self.jasa_sesungguhnya_label.pack(pady=5)
+        
+        # Baris 4: Label Sekolah (paling kiri)
+        if hasattr(self, 'sekolah_label'):
+            self.sekolah_label.destroy()
+        self.sekolah_label = tk.Label(self.summary_frame, 
+                                    text=f"SEKOLAH: {self.nama_sekolah}", 
+                                    font=('Arial', 12, 'bold'), bg='#ecf0f1', fg='#2c3e50')
+        self.sekolah_label.pack(anchor='w', pady=(10, 5))  # anchor='w' untuk posisi kiri, padding atas untuk jarak
     
     def display_belanja_pemeliharaan_results(self, items: List[Dict]):
         """Tampilkan hasil belanja pemeliharaan ke tabel khusus"""
