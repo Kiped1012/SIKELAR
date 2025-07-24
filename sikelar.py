@@ -53,10 +53,25 @@ class BOSBudgetAnalyzer:
                                font=('Arial', 12, 'bold'), bg='#ecf0f1')
         upload_label.pack(pady=10)
         
-        upload_btn = tk.Button(upload_frame, text="Pilih File Excel (.xlsx)", command=self.upload_excel,
-                              bg='#3498db', fg='white', font=('Arial', 10, 'bold'),
-                              padx=20, pady=5, cursor='hand2')
-        upload_btn.pack(pady=5)
+        upload_btn_frame = tk.Frame(self.root, bg="#f0f0f0")
+        upload_btn_frame.pack(pady=10)
+
+        # Gunakan font seragam untuk tombol
+        common_font = ('Arial', 11, 'bold')
+
+        # Tombol Upload
+        self.upload_btn = tk.Button(upload_btn_frame, text="Pilih File Excel (.xlsx)", command=self.upload_excel,
+                               bg='#3498db', fg='white', font=common_font,
+                               padx=20, pady=5, cursor='hand2')
+        self.upload_btn.pack(side='left', padx=(0, 5))
+
+        # Tombol Reset, simbol ✖ besar
+        reset_btn = tk.Button(upload_btn_frame, text="✖", command=self.reset_data,
+                              bg='red', fg='white', font=common_font,
+                              padx=5, pady=5, cursor='hand2', bd=1, relief='raised')
+        reset_btn.pack(side='left')
+
+
         
         self.file_label = tk.Label(upload_frame, text="Belum ada file yang dipilih", 
                                   font=('Arial', 10), bg='#ecf0f1', fg='#7f8c8d')
@@ -202,9 +217,14 @@ class BOSBudgetAnalyzer:
             try:
                 self.extract_excel_data(file_path)
                 self.file_label.config(text=f"File dipilih: {file_path.split('/')[-1]}", fg='#27ae60')
+
+                # ✅ Nonaktifkan tombol setelah upload berhasil
+                self.upload_btn.config(state='disabled')
+
                 messagebox.showinfo("Berhasil", f"File Excel berhasil diproses!\nTotal Penerimaan: Rp {self.total_penerimaan:,}\nDitemukan {len(self.budget_items)} item anggaran\nDitemukan {len(self.belanja_persediaan_items)} item belanja persediaan\nDitemukan {len(self.belanja_jasa_items)} item belanja jasa\nDitemukan {len(self.belanja_pemeliharaan_items)} item belanja pemeliharaan\nDitemukan {len(self.belanja_perjalanan_items)} item belanja perjalanan\nDitemukan {len(self.peralatan_items)} item peralatan dan mesin\nDitemukan {len(self.aset_tetap_items)} item aset tetap lainnya")
             except Exception as e:
                 messagebox.showerror("Error", f"Gagal membaca file Excel: {str(e)}")
+
     
     def extract_excel_data(self, file_path):
         """Ekstrak data dari file Excel dengan struktur spesifik RKAS"""
@@ -992,6 +1012,31 @@ class BOSBudgetAnalyzer:
             messagebox.showwarning("Peringatan", "Silakan upload file Excel terlebih dahulu!")
             return
         self.display_aset_tetap_results(self.aset_tetap_items)
+    
+    def reset_data(self):
+        self.excel_data = None
+        self.total_penerimaan = 0
+        self.budget_items = []
+        self.belanja_persediaan_items = []
+        self.belanja_jasa_items = []
+        self.belanja_pemeliharaan_items = []
+        self.belanja_perjalanan_items = []
+        self.peralatan_items = []
+        self.aset_tetap_items = []
+
+        # Bersihkan tampilan hasil
+        for widget in self.results_frame.winfo_children():
+            widget.destroy()
+
+        # Kosongkan label file
+        self.file_label.config(text="Belum ada file yang dipilih")
+
+        # ✅ Aktifkan kembali tombol upload
+        self.upload_btn.config(state='normal')
+
+        messagebox.showinfo("Reset", "Data berhasil dibersihkan.")
+
+
 
 def main():
     root = tk.Tk()
