@@ -119,6 +119,10 @@ class BOSBudgetAnalyzer:
         tk.Button(button_frame2, text="Aset Tetap Lainnya (5.2.04 & 5.2.05)", command=self.show_aset_tetap,
                 bg='#2980b9', fg='white', font=('Arial', 12, 'bold'), padx=20, pady=10, cursor='hand2', width=30).pack(side='left', padx=10)
         
+        tk.Button(button_frame2, text="Ringkasan", command=self.show_ringkasan,
+                bg='#16a085', fg='white', font=('Arial', 12, 'bold'), padx=20, pady=10, cursor='hand2', width=15).pack(side='left', padx=10)
+
+        
         self.results_frame = tk.Frame(self.root, bg='#ffffff', relief='sunken', bd=2)
         self.results_frame.pack(fill='both', expand=True, padx=10, pady=10)
         
@@ -202,6 +206,45 @@ class BOSBudgetAnalyzer:
         
         self.total_label = tk.Label(self.summary_frame, text="", font=('Arial', 14, 'bold'), bg='#ecf0f1')
         self.total_label.pack(pady=5)
+
+    def create_ringkasan_table(self):
+        """Buat tabel khusus untuk ringkasan dengan kolom yang berbeda"""
+        for widget in self.results_frame.winfo_children():
+            widget.destroy()
+        
+        self.result_title = tk.Label(self.results_frame, text="Ringkasan Anggaran", 
+                                    font=('Arial', 16, 'bold'), bg='#ffffff')
+        self.result_title.pack(pady=20)
+        
+        self.table_frame = tk.Frame(self.results_frame, bg='#ffffff')
+        self.table_frame.pack(fill='both', expand=True, padx=20, pady=10)
+        
+        # Kolom khusus untuk ringkasan
+        columns = ('Kategori', 'Jumlah (Rp)')
+        self.tree = ttk.Treeview(self.table_frame, columns=columns, show='headings', height=15)
+        
+        # Style untuk memperbesar font tabel
+        style = ttk.Style()
+        style.configure("Treeview", font=('Arial', 12))
+        style.configure("Treeview.Heading", font=('Arial', 14, 'bold'))
+        
+        for col in columns:
+            self.tree.heading(col, text=col)
+        self.tree.column('Kategori', width=400, anchor='w')
+        self.tree.column('Jumlah (Rp)', width=200, anchor='w')
+        
+        scrollbar = ttk.Scrollbar(self.table_frame, orient='vertical', command=self.tree.yview)
+        self.tree.configure(yscrollcommand=scrollbar.set)
+        self.tree.pack(side='left', fill='both', expand=True)
+        scrollbar.pack(side='right', fill='y')
+        
+        self.summary_frame = tk.Frame(self.results_frame, bg='#ecf0f1', relief='raised', bd=1)
+        self.summary_frame.pack(fill='x', padx=20, pady=10)
+        
+        # Label nama sekolah
+        sekolah_label = tk.Label(self.summary_frame, text=f"SEKOLAH: {self.nama_sekolah}", 
+                                font=('Arial', 12, 'bold'), bg='#ecf0f1', fg='#2c3e50')
+        sekolah_label.pack(anchor='w', pady=5)
     
     def is_valid_kegiatan_format(self, kode_kegiatan):
         """Cek apakah kode kegiatan sesuai format xx.xx.xx (2 digit, titik, 2 digit, titik, 2 digit, titik)"""
@@ -1031,7 +1074,7 @@ class BOSBudgetAnalyzer:
 
     def show_buku(self):
         if not self.budget_items:
-            messagebox.showwarning("Peringatan", "Silakan upload file Excel terlebih dahulu!")
+            messagebox.showwarning("Peringatan", "Data dalam kategori tersebut tidak ada atau file belum diupload!")
             return
         self.create_results_table()  # Reset ke tabel normal
         items = self.filter_budget_by_codes(self.kategori_kode['buku'])
@@ -1039,7 +1082,7 @@ class BOSBudgetAnalyzer:
     
     def show_sarana_prasarana(self):
         if not self.budget_items:
-            messagebox.showwarning("Peringatan", "Silakan upload file Excel terlebih dahulu!")
+            messagebox.showwarning("Peringatan", "Data dalam kategori tersebut tidak ada atau file belum diupload!")
             return
         self.create_results_table()  # Reset ke tabel normal
         items = self.filter_budget_by_codes(self.kategori_kode['sarana_prasarana'])
@@ -1047,7 +1090,7 @@ class BOSBudgetAnalyzer:
     
     def show_honor(self):
         if not self.budget_items:
-            messagebox.showwarning("Peringatan", "Silakan upload file Excel terlebih dahulu!")
+            messagebox.showwarning("Peringatan", "Data dalam kategori tersebut tidak ada atau file belum diupload!")
             return
         self.create_results_table()  # Reset ke tabel normal
         items = self.filter_budget_by_codes(self.kategori_kode['honor'])
@@ -1055,39 +1098,98 @@ class BOSBudgetAnalyzer:
     
     def show_belanja_persediaan(self):
         if not self.belanja_persediaan_items:
-            messagebox.showwarning("Peringatan", "Silakan upload file Excel terlebih dahulu!")
+            messagebox.showwarning("Peringatan", "Data dalam kategori tersebut tidak ada atau file belum diupload!")
             return
         self.display_belanja_persediaan_results(self.belanja_persediaan_items)
 
     def show_belanja_jasa(self):
         if not self.belanja_jasa_items:
-            messagebox.showwarning("Peringatan", "Silakan upload file Excel terlebih dahulu!")
+            messagebox.showwarning("Peringatan", "Data dalam kategori tersebut tidak ada atau file belum diupload!")
             return
         self.display_belanja_jasa_results(self.belanja_jasa_items)
 
     def show_belanja_pemeliharaan(self):
         if not self.belanja_pemeliharaan_items:
-            messagebox.showwarning("Peringatan", "Silakan upload file Excel terlebih dahulu!")
+            messagebox.showwarning("Peringatan", "Data dalam kategori tersebut tidak ada atau file belum diupload!")
             return
         self.display_belanja_pemeliharaan_results(self.belanja_pemeliharaan_items)
 
     def show_belanja_perjalanan(self):
         if not self.belanja_perjalanan_items:
-            messagebox.showwarning("Peringatan", "Silakan upload file Excel terlebih dahulu!")
+            messagebox.showwarning("Peringatan", "Data dalam kategori tersebut tidak ada atau file belum diupload!")
             return
         self.display_belanja_perjalanan_results(self.belanja_perjalanan_items)
 
     def show_peralatan(self):
         if not self.peralatan_items:
-            messagebox.showwarning("Peringatan", "Silakan upload file Excel terlebih dahulu!")
+            messagebox.showwarning("Peringatan", "Data dalam kategori tersebut tidak ada atau file belum diupload!")
             return
         self.display_peralatan_results(self.peralatan_items)
 
     def show_aset_tetap(self):
         if not self.aset_tetap_items:
-            messagebox.showwarning("Peringatan", "Silakan upload file Excel terlebih dahulu!")
+            messagebox.showwarning("Peringatan", "Data dalam kategori tersebut tidak ada atau file belum diupload!")
             return
         self.display_aset_tetap_results(self.aset_tetap_items)
+
+    def show_ringkasan(self):
+        if not self.excel_data and self.total_penerimaan == 0:
+            messagebox.showwarning("Peringatan", "File belum diupload!")
+            return
+        
+        # Buat tabel khusus ringkasan
+        self.create_ringkasan_table()
+        
+        # Hitung semua nilai yang diperlukan
+        total_belanja_persediaan = sum(item['jumlah'] for item in self.belanja_persediaan_items)
+        
+        # Honor dari kategori budget
+        honor_items = self.filter_budget_by_codes(self.kategori_kode['honor'])
+        total_honor = sum(item['jumlah'] for item in honor_items)
+        
+        # Belanja jasa dan jasa sesungguhnya
+        total_belanja_jasa = sum(item['jumlah'] for item in self.belanja_jasa_items)
+        jasa_sesungguhnya = total_belanja_jasa - total_honor
+        
+        total_pemeliharaan = sum(item['jumlah'] for item in self.belanja_pemeliharaan_items)
+        total_perjalanan = sum(item['jumlah'] for item in self.belanja_perjalanan_items)
+        total_peralatan = sum(item['jumlah'] for item in self.peralatan_items)
+        total_aset_tetap = sum(item['jumlah'] for item in self.aset_tetap_items)
+        
+        # Hitung belanja persediaan yang dimaksud dalam ringkasan
+        belanja_persediaan_ringkasan = (self.total_penerimaan - total_honor - 
+                                    jasa_sesungguhnya - total_pemeliharaan - total_perjalanan)
+        
+        belanja_modal = total_peralatan + total_aset_tetap
+        total_anggaran = total_belanja_persediaan + total_peralatan + total_aset_tetap
+        
+        # Data ringkasan dengan background color info
+        ringkasan_data = [
+            ("PAGU TAHUN 2025", self.total_penerimaan, True),  # True = background hijau
+            ("BELANJA OPERASI", total_belanja_persediaan, True),
+            ("  BELANJA HONOR", total_honor, False),
+            ("  BELANJA JASA", jasa_sesungguhnya, False),
+            ("  BELANJA PEMELIHARAAN", total_pemeliharaan, False),
+            ("  BELANJA PERJALANAN", total_perjalanan, False),
+            ("  BELANJA PERSEDIAAN", belanja_persediaan_ringkasan, True),
+            ("BELANJA MODAL", belanja_modal, True),
+            ("  PERALATAN DAN MESIN", total_peralatan, False),
+            ("  ASET TETAP LAINNYA", total_aset_tetap, False),
+            ("TOTAL ANGGARAN", total_anggaran, True)
+        ]
+        
+        # Masukkan data ke tabel
+        for kategori, jumlah, is_highlight in ringkasan_data:
+            formatted_jumlah = f"Rp {jumlah:,}".replace(',', '.')
+            item_id = self.tree.insert('', 'end', values=(kategori, formatted_jumlah))
+            
+            # Set background color untuk item yang di-highlight
+            if is_highlight:
+                self.tree.set(item_id, 'Kategori', kategori)
+                self.tree.set(item_id, 'Jumlah (Rp)', formatted_jumlah)
+                # Konfigurasi tag untuk background hijau
+                self.tree.tag_configure('highlight', background='#2ecc71', foreground='white')
+                self.tree.item(item_id, tags=('highlight',))
     
     def reset_data(self):
         self.excel_data = None
