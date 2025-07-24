@@ -21,6 +21,7 @@ class BOSBudgetAnalyzer:
         self.belanja_perjalanan_items = []  # Items untuk belanja perjalanan dinas
         self.peralatan_items = []  # Items untuk peralatan
         self.aset_tetap_items = []  # Items untuk aset tetap lainnya
+        self.nama_sekolah = ""
         
         # Kategori kode yang lebih spesifik berdasarkan gambar
         self.kategori_kode = {
@@ -43,17 +44,18 @@ class BOSBudgetAnalyzer:
         header_frame.pack_propagate(False)
         
         title_label = tk.Label(header_frame, text="Sistem Informasi Pengelompokan Anggaran dan Rekening", 
-                              font=('Arial', 16, 'bold'), fg='white', bg='#2c3e50')
+                            font=('Arial', 16, 'bold'), fg='white', bg='#2c3e50')
         title_label.pack(expand=True)
         
         upload_frame = tk.Frame(self.root, bg='#ecf0f1', relief='raised', bd=2)
         upload_frame.pack(fill='x', padx=10, pady=10)
         
         upload_label = tk.Label(upload_frame, text="Upload File Excel RKAS:", 
-                               font=('Arial', 12, 'bold'), bg='#ecf0f1')
+                            font=('Arial', 12, 'bold'), bg='#ecf0f1')
         upload_label.pack(pady=10)
         
-        upload_btn_frame = tk.Frame(self.root, bg="#f0f0f0")
+        # Pindahkan upload_btn_frame ke dalam upload_frame
+        upload_btn_frame = tk.Frame(upload_frame, bg="#ecf0f1")
         upload_btn_frame.pack(pady=10)
 
         # Gunakan font seragam untuk tombol
@@ -61,20 +63,19 @@ class BOSBudgetAnalyzer:
 
         # Tombol Upload
         self.upload_btn = tk.Button(upload_btn_frame, text="Pilih File Excel (.xlsx)", command=self.upload_excel,
-                               bg='#3498db', fg='white', font=common_font,
-                               padx=20, pady=5, cursor='hand2')
+                            bg='#3498db', fg='white', font=common_font,
+                            padx=20, pady=5, cursor='hand2')
         self.upload_btn.pack(side='left', padx=(0, 5))
 
         # Tombol Reset, simbol ✖ besar
         reset_btn = tk.Button(upload_btn_frame, text="✖", command=self.reset_data,
-                              bg='red', fg='white', font=common_font,
-                              padx=5, pady=5, cursor='hand2', bd=1, relief='raised')
+                            bg='red', fg='white', font=common_font,
+                            padx=5, pady=5, cursor='hand2', bd=1, relief='raised')
         reset_btn.pack(side='left')
-
 
         
         self.file_label = tk.Label(upload_frame, text="Belum ada file yang dipilih", 
-                                  font=('Arial', 10), bg='#ecf0f1', fg='#7f8c8d')
+                                font=('Arial', 10), bg='#ecf0f1', fg='#7f8c8d')
         self.file_label.pack(pady=5)
         
         # Membagi button frame menjadi dua baris
@@ -86,37 +87,37 @@ class BOSBudgetAnalyzer:
         
         # Baris pertama buttons
         tk.Button(button_frame1, text="Buku (05.02.)", command=self.show_buku,
-                  bg='#e74c3c', fg='white', font=('Arial', 12, 'bold'), padx=20, pady=10, cursor='hand2', width=15).pack(side='left', padx=10)
+                bg='#e74c3c', fg='white', font=('Arial', 12, 'bold'), padx=20, pady=10, cursor='hand2', width=15).pack(side='left', padx=10)
         
         tk.Button(button_frame1, text="Sarana & Prasarana (05.08.)", command=self.show_sarana_prasarana,
-                  bg='#f39c12', fg='white', font=('Arial', 12, 'bold'), padx=20, pady=10, cursor='hand2', width=20).pack(side='left', padx=10)
+                bg='#f39c12', fg='white', font=('Arial', 12, 'bold'), padx=20, pady=10, cursor='hand2', width=20).pack(side='left', padx=10)
         
         tk.Button(button_frame1, text="Honor (07.12.)", command=self.show_honor,
-                  bg='#27ae60', fg='white', font=('Arial', 12, 'bold'), padx=20, pady=10, cursor='hand2', width=15).pack(side='left', padx=10)
+                bg='#27ae60', fg='white', font=('Arial', 12, 'bold'), padx=20, pady=10, cursor='hand2', width=15).pack(side='left', padx=10)
         
         # Button Belanja Persediaan di samping Honor pada baris yang sama
-        tk.Button(button_frame1, text="Persediaan (5.1.02.01)", command=self.show_belanja_persediaan,
-                  bg='#9b59b6', fg='white', font=('Arial', 12, 'bold'), padx=20, pady=10, cursor='hand2', width=25).pack(side='left', padx=10)
+        tk.Button(button_frame1, text="Pakai Habis (5.1.02.01)", command=self.show_belanja_persediaan,
+                bg='#9b59b6', fg='white', font=('Arial', 12, 'bold'), padx=20, pady=10, cursor='hand2', width=25).pack(side='left', padx=10)
 
         # Button Belanja Jasa tepat di samping Belanja Persediaan
         tk.Button(button_frame1, text="Jasa (5.1.02.02)", command=self.show_belanja_jasa,
-                  bg='#e67e22', fg='white', font=('Arial', 12, 'bold'), padx=20, pady=10, cursor='hand2', width=25).pack(side='left', padx=10)
+                bg='#e67e22', fg='white', font=('Arial', 12, 'bold'), padx=20, pady=10, cursor='hand2', width=25).pack(side='left', padx=10)
         
         # Button Belanja Pemeliharaan
         tk.Button(button_frame1, text="Pemeliharaan (5.1.02.03)", command=self.show_belanja_pemeliharaan,
-                  bg="#050607", fg='white', font=('Arial', 12, 'bold'), padx=20, pady=10, cursor='hand2', width=25).pack(side='left', padx=10)
+                bg="#050607", fg='white', font=('Arial', 12, 'bold'), padx=20, pady=10, cursor='hand2', width=25).pack(side='left', padx=10)
         
         # Button Belanja Perjalanan Dinas
         tk.Button(button_frame1, text="Perjalanan Dinas (5.1.02.04)", command=self.show_belanja_perjalanan,
-                  bg='#e67e22', fg='white', font=('Arial', 12, 'bold'), padx=20, pady=10, cursor='hand2', width=25).pack(side='left', padx=10)
+                bg='#e67e22', fg='white', font=('Arial', 12, 'bold'), padx=20, pady=10, cursor='hand2', width=25).pack(side='left', padx=10)
         
         # Button Peralatan
         tk.Button(button_frame2, text="Peralatan dan Mesin (5.2.02)", command=self.show_peralatan,
-                 bg='#e67e22', fg='white', font=('Arial', 12, 'bold'), padx=20, pady=10, cursor='hand2', width=20).pack(side='left', padx=10)
+                bg='#e67e22', fg='white', font=('Arial', 12, 'bold'), padx=20, pady=10, cursor='hand2', width=20).pack(side='left', padx=10)
         
         # Button Aset Tetap Lainnya
         tk.Button(button_frame2, text="Aset Tetap Lainnya (5.2.04 & 5.2.05)", command=self.show_aset_tetap,
-                  bg='#2980b9', fg='white', font=('Arial', 12, 'bold'), padx=20, pady=10, cursor='hand2', width=30).pack(side='left', padx=10)
+                bg='#2980b9', fg='white', font=('Arial', 12, 'bold'), padx=20, pady=10, cursor='hand2', width=30).pack(side='left', padx=10)
         
         self.results_frame = tk.Frame(self.root, bg='#ffffff', relief='sunken', bd=2)
         self.results_frame.pack(fill='both', expand=True, padx=10, pady=10)
@@ -168,7 +169,7 @@ class BOSBudgetAnalyzer:
         for widget in self.results_frame.winfo_children():
             widget.destroy()
         
-        self.result_title = tk.Label(self.results_frame, text="Rincian Belanja Persediaan (5.1.02.01)", 
+        self.result_title = tk.Label(self.results_frame, text="Rincian Pakai Habis (5.1.02.01)", 
                                     font=('Arial', 16, 'bold'), bg='#ffffff')
         self.result_title.pack(pady=20)
         
@@ -225,7 +226,20 @@ class BOSBudgetAnalyzer:
             except Exception as e:
                 messagebox.showerror("Error", f"Gagal membaca file Excel: {str(e)}")
 
-    
+    def extract_nama_sekolah(self, sheet):
+        """Ekstrak nama sekolah dari baris 7, kolom F-AF (merged)"""
+        try:
+            # Ekstrak teks dari kolom F sampai AF (F=6, AF=32)
+            nama_sekolah = self.extract_merged_text(sheet, 7, range(6, 33))  # F=6 sampai AF=32
+            if nama_sekolah and nama_sekolah.strip():
+                self.nama_sekolah = nama_sekolah.strip()
+                print(f"Debug: Nama sekolah ditemukan: {self.nama_sekolah}")
+            else:
+                self.nama_sekolah = "Nama Sekolah Tidak Ditemukan"
+        except Exception as e:
+            print(f"Error extracting nama sekolah {e}")
+            self.nama_sekolah = "Nama Sekolah Tidak Ditemukan"
+
     def extract_excel_data(self, file_path):
         """Ekstrak data dari file Excel dengan struktur spesifik RKAS"""
         workbook = openpyxl.load_workbook(file_path)
@@ -241,6 +255,9 @@ class BOSBudgetAnalyzer:
         self.aset_tetap_items = []
         self.total_penerimaan = 0
         
+        # Ekstrak nama sekolah - TAMBAHKAN INI
+        self.extract_nama_sekolah(sheet)
+
         # Ekstrak total penerimaan dari baris 30, kolom I-N (merged)
         self.extract_total_penerimaan(sheet)
         
@@ -788,6 +805,14 @@ class BOSBudgetAnalyzer:
         percentage = (total_jumlah / self.total_penerimaan) * 100 if self.total_penerimaan else 0
         
         # Update summary
+        # UBAH BAGIAN INI - Layout horizontal
+        # Frame kiri untuk nama sekolah
+        left_frame = tk.Frame(self.summary_frame, bg='#ecf0f1')
+        left_frame.pack(side='left', fill='y', padx=(10, 20))
+        
+        sekolah_label = tk.Label(left_frame, text=f"SEKOLAH {self.nama_sekolah}", 
+                                font=('Arial', 12, 'bold'), bg='#ecf0f1', fg='#2c3e50')
+        sekolah_label.pack(anchor='w')
         self.total_label.config(text=f"Total Alokasi {category_name}: Rp {total_jumlah:,}".replace(',', '.'))
         self.percentage_label.config(text=f"Persentase dari Total Penerimaan: {percentage:.2f}%")
     
@@ -811,7 +836,15 @@ class BOSBudgetAnalyzer:
             self.tree.insert('', 'end', values=('', '', 'Tidak ada data ditemukan untuk kategori ini', 'Rp 0'))
         
         # Update summary (tanpa percentage)
-        self.total_label.config(text=f"Total Belanja Persediaan: Rp {total_jumlah:,}".replace(',', '.'))
+        # UBAH BAGIAN INI - Layout horizontal
+        # Frame kiri untuk nama sekolah
+        left_frame = tk.Frame(self.summary_frame, bg='#ecf0f1')
+        left_frame.pack(side='left', fill='y', padx=(10, 20))
+        
+        sekolah_label = tk.Label(left_frame, text=f"SEKOLAH {self.nama_sekolah}", 
+                                font=('Arial', 12, 'bold'), bg='#ecf0f1', fg='#2c3e50')
+        sekolah_label.pack(anchor='w')
+        self.total_label.config(text=f"Total Pakai Habis: Rp {total_jumlah:,}".replace(',', '.'))
 
     def display_belanja_jasa_results(self, items: List[Dict]):
         """Tampilkan hasil belanja jasa ke tabel khusus dengan summary yang diperluas"""
@@ -841,6 +874,14 @@ class BOSBudgetAnalyzer:
         jasa_sesungguhnya = total_belanja_jasa - total_honor
         
         # Update summary dengan informasi lengkap
+        # UBAH BAGIAN INI - Layout horizontal
+        # Frame kiri untuk nama sekolah
+        left_frame = tk.Frame(self.summary_frame, bg='#ecf0f1')
+        left_frame.pack(side='left', fill='y', padx=(10, 20))
+        
+        sekolah_label = tk.Label(left_frame, text=f"SEKOLAH {self.nama_sekolah}", 
+                                font=('Arial', 12, 'bold'), bg='#ecf0f1', fg='#2c3e50')
+        sekolah_label.pack(anchor='w')
         self.total_label.config(text=f"Total Belanja Jasa: Rp {total_belanja_jasa:,}".replace(',', '.'))
         
         # Tambahkan label untuk pembayaran honor dan jasa sesungguhnya
@@ -882,12 +923,21 @@ class BOSBudgetAnalyzer:
             self.tree.insert('', 'end', values=('', '', 'Tidak ada data ditemukan untuk kategori ini', 'Rp 0'))
         
         # Update summary (tanpa percentage)
+        # UBAH BAGIAN INI - Layout horizontal
+        # Frame kiri untuk nama sekolah
+        left_frame = tk.Frame(self.summary_frame, bg='#ecf0f1')
+        left_frame.pack(side='left', fill='y', padx=(10, 20))
+        
+        sekolah_label = tk.Label(left_frame, text=f"SEKOLAH {self.nama_sekolah}", 
+                                font=('Arial', 12, 'bold'), bg='#ecf0f1', fg='#2c3e50')
+        sekolah_label.pack(anchor='w')
         self.total_label.config(text=f"Total Belanja Pemeliharaan: Rp {total_jumlah:,}".replace(',', '.'))
 
     def display_belanja_perjalanan_results(self, items: List[Dict]):
         """Tampilkan hasil belanja perjalanan dinas ke tabel khusus"""
         # Buat tabel khusus
         self.create_belanja_persediaan_table()
+        self.result_title.config(text="Rincian Perjalanan Dinas (5.1.02.04)")
         
         total_jumlah = 0
         if items:
@@ -904,12 +954,21 @@ class BOSBudgetAnalyzer:
             self.tree.insert('', 'end', values=('', '', 'Tidak ada data ditemukan untuk kategori ini', 'Rp 0'))
         
         # Update summary (tanpa percentage)
+        # UBAH BAGIAN INI - Layout horizontal
+        # Frame kiri untuk nama sekolah
+        left_frame = tk.Frame(self.summary_frame, bg='#ecf0f1')
+        left_frame.pack(side='left', fill='y', padx=(10, 20))
+        
+        sekolah_label = tk.Label(left_frame, text=f"SEKOLAH {self.nama_sekolah}", 
+                                font=('Arial', 12, 'bold'), bg='#ecf0f1', fg='#2c3e50')
+        sekolah_label.pack(anchor='w')
         self.total_label.config(text=f"Total Belanja Perjalanan Dinas: Rp {total_jumlah:,}".replace(',', '.'))
 
     def display_peralatan_results(self, items: List[Dict]):
         """Tampilkan hasil peralatan ke tabel khusus"""
         # Buat tabel khusus
         self.create_belanja_persediaan_table()
+        self.result_title.config(text="Rincian Peralatan dan Mesin (5.2.02)")
         
         total_jumlah = 0
         if items:
@@ -926,6 +985,14 @@ class BOSBudgetAnalyzer:
             self.tree.insert('', 'end', values=('', '', 'Tidak ada data ditemukan untuk kategori ini', 'Rp 0'))
         
         # Update summary (tanpa percentage)
+        # UBAH BAGIAN INI - Layout horizontal
+        # Frame kiri untuk nama sekolah
+        left_frame = tk.Frame(self.summary_frame, bg='#ecf0f1')
+        left_frame.pack(side='left', fill='y', padx=(10, 20))
+        
+        sekolah_label = tk.Label(left_frame, text=f"SEKOLAH {self.nama_sekolah}", 
+                                font=('Arial', 12, 'bold'), bg='#ecf0f1', fg='#2c3e50')
+        sekolah_label.pack(anchor='w')
         self.total_label.config(text=f"Total Peralatan: Rp {total_jumlah:,}".replace(',', '.'))
 
     def display_aset_tetap_results(self, items: List[Dict]):
@@ -951,6 +1018,14 @@ class BOSBudgetAnalyzer:
             self.tree.insert('', 'end', values=('', '', 'Tidak ada data ditemukan untuk kategori ini', 'Rp 0'))
         
         # Update summary (tanpa percentage)
+        # UBAH BAGIAN INI - Layout horizontal
+        # Frame kiri untuk nama sekolah
+        left_frame = tk.Frame(self.summary_frame, bg='#ecf0f1')
+        left_frame.pack(side='left', fill='y', padx=(10, 20))
+        
+        sekolah_label = tk.Label(left_frame, text=f"SEKOLAH {self.nama_sekolah}", 
+                                font=('Arial', 12, 'bold'), bg='#ecf0f1', fg='#2c3e50')
+        sekolah_label.pack(anchor='w')
         self.total_label.config(text=f"Total Aset Tetap Lainnya: Rp {total_jumlah:,}".replace(',', '.'))
 
     def show_buku(self):
