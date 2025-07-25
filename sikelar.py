@@ -119,7 +119,7 @@ class BOSBudgetAnalyzer:
             ("Buku", self.show_buku, "#29b9b9", 24),
             ("Sarana & Prasarana", self.show_sarana_prasarana, "#29b9b9", 24),
             ("Honor", self.show_honor, "#29b9b9", 24),
-            ("Pakai Habis", self.show_belanja_persediaan, "#29b9b9", 24),
+            ("Belanja Persediaan", self.show_belanja_persediaan, "#29b9b9", 24),
             ("Jasa", self.show_belanja_jasa, "#29b9b9", 24),
             ("Pemeliharaan", self.show_belanja_pemeliharaan, "#29b9b9", 24),
             ("Perjalanan Dinas", self.show_belanja_perjalanan, "#29b9b9", 24),
@@ -206,7 +206,7 @@ class BOSBudgetAnalyzer:
         for widget in self.results_frame.winfo_children():
             widget.destroy()
         
-        self.result_title = tk.Label(self.results_frame, text="Rincian Pakai Habis (5.1.02.01)", 
+        self.result_title = tk.Label(self.results_frame, text="Rincian Belanja Persediaan (5.1.02.01)", 
                                     font=('Arial', 16, 'bold'), bg='#ffffff')
         self.result_title.pack(pady=20)
         
@@ -920,7 +920,7 @@ class BOSBudgetAnalyzer:
         sekolah_label = tk.Label(left_frame, text=f"SEKOLAH {self.nama_sekolah}", 
                                 font=('Arial', 12, 'bold'), bg='#ecf0f1', fg='#2c3e50')
         sekolah_label.pack(anchor='w')
-        self.total_label.config(text=f"Total Pakai Habis: Rp {total_jumlah:,}".replace(',', '.'))
+        self.total_label.config(text=f"Total Belanja Persediaan: Rp {total_jumlah:,}".replace(',', '.'))
 
     def display_belanja_jasa_results(self, items: List[Dict]):
         """Tampilkan hasil belanja jasa ke tabel khusus dengan summary yang diperluas"""
@@ -1173,9 +1173,6 @@ class BOSBudgetAnalyzer:
         # Buat tabel khusus ringkasan
         self.create_ringkasan_table()
         
-        # Hitung semua nilai yang diperlukan
-        total_belanja_persediaan = sum(item['jumlah'] for item in self.belanja_persediaan_items)
-        
         # Honor dari kategori budget
         honor_items = self.filter_budget_by_codes(self.kategori_kode['honor'])
         total_honor = sum(item['jumlah'] for item in honor_items)
@@ -1191,7 +1188,10 @@ class BOSBudgetAnalyzer:
         
         # Hitung belanja persediaan yang dimaksud dalam ringkasan
         belanja_persediaan_ringkasan = (self.total_penerimaan - total_honor - 
-                                    jasa_sesungguhnya - total_pemeliharaan - total_perjalanan)
+                                    jasa_sesungguhnya - total_pemeliharaan - total_perjalanan - total_peralatan - total_aset_tetap)
+        
+        # Hitung semua nilai yang diperlukan
+        total_belanja_persediaan = (total_honor + jasa_sesungguhnya + total_pemeliharaan + total_perjalanan + belanja_persediaan_ringkasan)
         
         belanja_modal = total_peralatan + total_aset_tetap
         total_anggaran = total_belanja_persediaan + total_peralatan + total_aset_tetap
