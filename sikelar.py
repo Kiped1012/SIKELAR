@@ -35,10 +35,36 @@ class BOSBudgetAnalyzer:
             'peralatan': ['5.2.02'],  # Peralatan dan Mesin
             'aset_tetap_lainnya': ['5.2.04', '5.2.05']  # Aset Tetap Lainnya
         }
-        
+
+        # Untuk mendukung highlight tombol aktif
+        self.active_button = None
+        self.button_refs = []
+
         self.setup_ui()
-    
+
     def setup_ui(self):
+        import colorsys
+
+        def darken_color(hex_color, factor=0.65):
+            """Turunkan kecerahan warna hex sedikit (factor < 1.0)"""
+            hex_color = hex_color.lstrip('#')
+            r, g, b = tuple(int(hex_color[i:i+2], 16) for i in (0, 2, 4))
+            h, l, s = colorsys.rgb_to_hls(r/255.0, g/255.0, b/255.0)
+            l = max(0, min(1, l * factor))
+            r, g, b = colorsys.hls_to_rgb(h, l, s)
+            return f'#{int(r*255):02x}{int(g*255):02x}{int(b*255):02x}'
+
+        self.tab_buttons = {}
+        self.active_tab = None
+
+        def highlight_active_tab(name):
+            for tab_name, (btn, orig_color) in self.tab_buttons.items():
+                if tab_name == name:
+                    btn.config(bg=darken_color(orig_color))
+                else:
+                    btn.config(bg=orig_color)
+            self.active_tab = name
+
         header_frame = tk.Frame(self.root, bg='#2c3e50', height=80)
         header_frame.pack(fill='x', padx=10, pady=(10,0))
         header_frame.pack_propagate(False)
@@ -54,80 +80,87 @@ class BOSBudgetAnalyzer:
                             font=('Arial', 12, 'bold'), bg='#ecf0f1')
         upload_label.pack(pady=10)
         
-        # Pindahkan upload_btn_frame ke dalam upload_frame
         upload_btn_frame = tk.Frame(upload_frame, bg="#ecf0f1")
         upload_btn_frame.pack(pady=10)
 
-        # Gunakan font seragam untuk tombol
         common_font = ('Arial', 11, 'bold')
 
-        # Tombol Upload
         self.upload_btn = tk.Button(upload_btn_frame, text="Pilih File Excel (.xlsx)", command=self.upload_excel,
                             bg='#3498db', fg='white', font=common_font,
                             padx=20, pady=5, cursor='hand2')
         self.upload_btn.pack(side='left', padx=(0, 5))
 
-        # Tombol Reset, simbol ✖ besar
         reset_btn = tk.Button(upload_btn_frame, text="✖", command=self.reset_data,
                             bg='red', fg='white', font=common_font,
                             padx=5, pady=5, cursor='hand2', bd=1, relief='raised')
         reset_btn.pack(side='left')
-
         
         self.file_label = tk.Label(upload_frame, text="Belum ada file yang dipilih", 
                                 font=('Arial', 10), bg='#ecf0f1', fg='#7f8c8d')
         self.file_label.pack(pady=5)
         
-        # Membagi button frame menjadi dua baris
-        button_frame1 = tk.Frame(self.root, bg='#f0f0f0')
-        button_frame1.pack(fill='x', padx=10, pady=(10, 5))
+        main_button_frame = tk.Frame(self.root, bg='#f0f0f0', height=80)
+        main_button_frame.pack(fill='x', padx=10, pady=10)
+        main_button_frame.pack_propagate(False)
         
-        button_frame2 = tk.Frame(self.root, bg='#f0f0f0')
-        button_frame2.pack(fill='x', padx=10, pady=(5, 10))
+        self.button_canvas = tk.Canvas(main_button_frame, bg='#f0f0f0', height=60, highlightthickness=0)
+        self.button_canvas.pack(side='top', fill='x', padx=5, pady=5)
         
-        # Baris pertama buttons
-        tk.Button(button_frame1, text="Buku (05.02.)", command=self.show_buku,
-                bg='#e74c3c', fg='white', font=('Arial', 12, 'bold'), padx=20, pady=10, cursor='hand2', width=15).pack(side='left', padx=10)
+        h_scrollbar = tk.Scrollbar(main_button_frame, orient='horizontal', command=self.button_canvas.xview)
+        h_scrollbar.pack(side='bottom', fill='x')
+        self.button_canvas.configure(xscrollcommand=h_scrollbar.set)
         
-        tk.Button(button_frame1, text="Sarana & Prasarana (05.08.)", command=self.show_sarana_prasarana,
-                bg='#f39c12', fg='white', font=('Arial', 12, 'bold'), padx=20, pady=10, cursor='hand2', width=20).pack(side='left', padx=10)
+        self.scrollable_button_frame = tk.Frame(self.button_canvas, bg='#f0f0f0')
+        self.canvas_window = self.button_canvas.create_window((0, 0), window=self.scrollable_button_frame, anchor='nw')
         
-        tk.Button(button_frame1, text="Honor (07.12.)", command=self.show_honor,
-                bg='#27ae60', fg='white', font=('Arial', 12, 'bold'), padx=20, pady=10, cursor='hand2', width=15).pack(side='left', padx=10)
+        button_font = ('Arial', 11, 'bold')
         
-        # Button Belanja Persediaan di samping Honor pada baris yang sama
-        tk.Button(button_frame1, text="Pakai Habis (5.1.02.01)", command=self.show_belanja_persediaan,
-                bg='#9b59b6', fg='white', font=('Arial', 12, 'bold'), padx=20, pady=10, cursor='hand2', width=25).pack(side='left', padx=10)
+        buttons_config = [
+            ("Buku", self.show_buku, "#29b9b9", 24),
+            ("Sarana & Prasarana", self.show_sarana_prasarana, "#29b9b9", 24),
+            ("Honor", self.show_honor, "#29b9b9", 24),
+            ("Pakai Habis", self.show_belanja_persediaan, "#29b9b9", 24),
+            ("Jasa", self.show_belanja_jasa, "#29b9b9", 24),
+            ("Pemeliharaan", self.show_belanja_pemeliharaan, "#29b9b9", 24),
+            ("Perjalanan Dinas", self.show_belanja_perjalanan, "#29b9b9", 24),
+            ("Peralatan", self.show_peralatan,  "#29b9b9", 24),
+            ("Aset Tetap", self.show_aset_tetap, "#29b9b9", 24),
+            ("Ringkasan", self.show_ringkasan, "#29b9b9", 24)
+        ]
+        
+        for name, func, color, width in buttons_config:
+            def make_command(f=func, n=name):
+                return lambda: [f(), highlight_active_tab(n)]
 
-        # Button Belanja Jasa tepat di samping Belanja Persediaan
-        tk.Button(button_frame1, text="Jasa (5.1.02.02)", command=self.show_belanja_jasa,
-                bg='#e67e22', fg='white', font=('Arial', 12, 'bold'), padx=20, pady=10, cursor='hand2', width=25).pack(side='left', padx=10)
+            btn = tk.Button(self.scrollable_button_frame, 
+                        text=name, 
+                        command=make_command(), 
+                        bg=color, 
+                        fg='white', 
+                        font=button_font, 
+                        cursor='hand2', 
+                        width=width,
+                        height=2,
+                        relief='raised',
+                        bd=2)
+            btn.pack(side='left', padx=3, pady=5)
+            self.tab_buttons[name] = (btn, color)
         
-        # Button Belanja Pemeliharaan
-        tk.Button(button_frame1, text="Pemeliharaan (5.1.02.03)", command=self.show_belanja_pemeliharaan,
-                bg="#050607", fg='white', font=('Arial', 12, 'bold'), padx=20, pady=10, cursor='hand2', width=25).pack(side='left', padx=10)
+        self.scrollable_button_frame.update_idletasks()
+        self.button_canvas.configure(scrollregion=self.button_canvas.bbox("all"))
         
-        # Button Belanja Perjalanan Dinas
-        tk.Button(button_frame1, text="Perjalanan Dinas (5.1.02.04)", command=self.show_belanja_perjalanan,
-                bg='#e67e22', fg='white', font=('Arial', 12, 'bold'), padx=20, pady=10, cursor='hand2', width=25).pack(side='left', padx=10)
-        
-        # Button Peralatan
-        tk.Button(button_frame2, text="Peralatan dan Mesin (5.2.02)", command=self.show_peralatan,
-                bg='#e67e22', fg='white', font=('Arial', 12, 'bold'), padx=20, pady=10, cursor='hand2', width=20).pack(side='left', padx=10)
-        
-        # Button Aset Tetap Lainnya
-        tk.Button(button_frame2, text="Aset Tetap Lainnya (5.2.04 & 5.2.05)", command=self.show_aset_tetap,
-                bg='#2980b9', fg='white', font=('Arial', 12, 'bold'), padx=20, pady=10, cursor='hand2', width=30).pack(side='left', padx=10)
-        
-        tk.Button(button_frame2, text="Ringkasan", command=self.show_ringkasan,
-                bg='#16a085', fg='white', font=('Arial', 12, 'bold'), padx=20, pady=10, cursor='hand2', width=15).pack(side='left', padx=10)
-
+        self.button_canvas.bind("<MouseWheel>", self._on_mousewheel)
+        self.button_canvas.bind("<Button-4>", self._on_mousewheel)
+        self.button_canvas.bind("<Button-5>", self._on_mousewheel)
+        self.button_canvas.bind('<Configure>', self._on_canvas_configure)
+        self.scrollable_button_frame.bind('<Configure>', self._on_frame_configure)
+        self.button_canvas.focus_set()
         
         self.results_frame = tk.Frame(self.root, bg='#ffffff', relief='sunken', bd=2)
         self.results_frame.pack(fill='both', expand=True, padx=10, pady=10)
         
         self.create_results_table()
-    
+
     def create_results_table(self):
         for widget in self.results_frame.winfo_children():
             widget.destroy()
@@ -1213,6 +1246,31 @@ class BOSBudgetAnalyzer:
         self.upload_btn.config(state='normal')
 
         messagebox.showinfo("Reset", "Data berhasil dibersihkan.")
+    
+    def _on_mousewheel(self, event):
+        """Handle mouse wheel scrolling untuk scroll horizontal"""
+        # Windows dan MacOS
+        if event.delta:
+            self.button_canvas.xview_scroll(int(-1*(event.delta/120)), "units")
+        # Linux
+        elif event.num == 4:
+            self.button_canvas.xview_scroll(-1, "units")
+        elif event.num == 5:
+            self.button_canvas.xview_scroll(1, "units")
+        
+    def _on_canvas_configure(self, event):
+        """Handle canvas configure event"""
+        # Update scroll region
+        self.button_canvas.configure(scrollregion=self.button_canvas.bbox("all"))
+        
+        # Update canvas window height to match canvas
+        canvas_height = self.button_canvas.winfo_height()
+        self.button_canvas.itemconfig(self.canvas_window, height=canvas_height)
+    
+    def _on_frame_configure(self, event):
+        """Handle frame configure event"""
+        # Update scroll region when frame changes
+        self.button_canvas.configure(scrollregion=self.button_canvas.bbox("all"))
 
 
 
