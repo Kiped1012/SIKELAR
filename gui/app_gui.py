@@ -1,6 +1,6 @@
 """
 Main GUI application for SIKELAR
-Handles user interface and interactions
+Handles user interface and interactions with enhanced scrolling
 """
 
 import tkinter as tk
@@ -149,9 +149,53 @@ class BOSBudgetAnalyzer:
         self.button_canvas.focus_set()
 
     def _create_results_section(self):
-        """Create results display section"""
-        self.results_frame = tk.Frame(self.root, bg='#ffffff', relief='sunken', bd=2)
-        self.results_frame.pack(fill='both', expand=True, padx=10, pady=10)
+        """Create results display section with vertical scrolling"""
+        # Main container for results
+        self.results_main_frame = tk.Frame(self.root, bg='#ffffff', relief='sunken', bd=2)
+        self.results_main_frame.pack(fill='both', expand=True, padx=10, pady=10)
+        
+        # Create canvas for vertical scrolling
+        self.results_canvas = tk.Canvas(self.results_main_frame, bg='#ffffff', highlightthickness=0)
+        self.results_canvas.pack(side='left', fill='both', expand=True)
+        
+        # Vertical scrollbar for results
+        self.results_v_scrollbar = tk.Scrollbar(self.results_main_frame, orient='vertical', 
+                                              command=self.results_canvas.yview)
+        self.results_v_scrollbar.pack(side='right', fill='y')
+        self.results_canvas.configure(yscrollcommand=self.results_v_scrollbar.set)
+        
+        # Scrollable frame inside canvas
+        self.results_frame = tk.Frame(self.results_canvas, bg='#ffffff')
+        self.results_canvas_window = self.results_canvas.create_window((0, 0), window=self.results_frame, anchor='nw')
+        
+        # Bind events for scrolling
+        self.results_frame.bind('<Configure>', self._on_results_frame_configure)
+        self.results_canvas.bind('<Configure>', self._on_results_canvas_configure)
+        self.results_canvas.bind("<MouseWheel>", self._on_results_mousewheel)
+        self.results_canvas.bind("<Button-4>", self._on_results_mousewheel)
+        self.results_canvas.bind("<Button-5>", self._on_results_mousewheel)
+
+    def _on_results_frame_configure(self, event):
+        """Handle results frame configure event for vertical scrolling"""
+        # Update scroll region when frame changes
+        self.results_canvas.configure(scrollregion=self.results_canvas.bbox("all"))
+
+    def _on_results_canvas_configure(self, event):
+        """Handle results canvas configure event"""
+        # Update canvas window width to match canvas width
+        canvas_width = self.results_canvas.winfo_width()
+        self.results_canvas.itemconfig(self.results_canvas_window, width=canvas_width)
+
+    def _on_results_mousewheel(self, event):
+        """Handle mouse wheel scrolling for results area"""
+        # Windows and MacOS
+        if event.delta:
+            self.results_canvas.yview_scroll(int(-1*(event.delta/120)), "units")
+        # Linux
+        elif event.num == 4:
+            self.results_canvas.yview_scroll(-1, "units")
+        elif event.num == 5:
+            self.results_canvas.yview_scroll(1, "units")
 
     def upload_excel(self):
         """Handle Excel file upload"""
@@ -184,6 +228,9 @@ class BOSBudgetAnalyzer:
         for widget in self.results_frame.winfo_children():
             widget.destroy()
 
+        # Reset scroll position
+        self.results_canvas.yview_moveto(0)
+
         # Clear file label
         self.file_label.config(text="Belum ada file yang dipilih")
 
@@ -193,9 +240,12 @@ class BOSBudgetAnalyzer:
         messagebox.showinfo("Reset", "Data berhasil dibersihkan.")
 
     def create_standard_table(self, title, columns):
-        """Create standard table layout"""
+        """Create standard table layout with improved scrolling"""
         for widget in self.results_frame.winfo_children():
             widget.destroy()
+        
+        # Reset canvas scroll position to top
+        self.results_canvas.yview_moveto(0)
         
         self.result_title = tk.Label(self.results_frame, text=title, 
                                     font=('Arial', 16, 'bold'), bg='#ffffff')
@@ -204,7 +254,8 @@ class BOSBudgetAnalyzer:
         self.table_frame = tk.Frame(self.results_frame, bg='#ffffff')
         self.table_frame.pack(fill='both', expand=True, padx=20, pady=10)
         
-        self.tree = ttk.Treeview(self.table_frame, columns=columns, show='headings', height=15)
+        # Limit table height to prevent it from taking too much space
+        self.tree = ttk.Treeview(self.table_frame, columns=columns, show='headings', height=12)
         
         # Style untuk memperbesar font tabel
         style = ttk.Style()
@@ -224,16 +275,20 @@ class BOSBudgetAnalyzer:
             self.tree.column(columns[0], width=400, anchor='w')       # Kategori
             self.tree.column(columns[1], width=200, anchor='w')       # Jumlah
         
-        scrollbar = ttk.Scrollbar(self.table_frame, orient='vertical', command=self.tree.yview)
-        self.tree.configure(yscrollcommand=scrollbar.set)
+        table_scrollbar = ttk.Scrollbar(self.table_frame, orient='vertical', command=self.tree.yview)
+        self.tree.configure(yscrollcommand=table_scrollbar.set)
         self.tree.pack(side='left', fill='both', expand=True)
-        scrollbar.pack(side='right', fill='y')
+        table_scrollbar.pack(side='right', fill='y')
         
         self.summary_frame = tk.Frame(self.results_frame, bg='#ecf0f1', relief='raised', bd=1)
         self.summary_frame.pack(fill='x', padx=20, pady=10)
+        
+        # Force update of canvas scroll region
+        self.results_frame.update_idletasks()
+        self.results_canvas.configure(scrollregion=self.results_canvas.bbox("all"))
 
     def display_standard_results(self, items: List[Dict], title: str, total_label: str):
-        """Display results in standard format"""
+        """Display results in standard format with consistent summary layout"""
         columns = ('Kode Rekening', 'Kode Kegiatan', 'Uraian', 'Jumlah (Rp)')
         self.create_standard_table(title, columns)
         
@@ -251,22 +306,21 @@ class BOSBudgetAnalyzer:
         else:
             self.tree.insert('', 'end', values=('', '', 'Tidak ada data ditemukan untuk kategori ini', 'Rp 0'))
         
-        # Create summary labels
-        self._create_standard_summary(total_label, total_jumlah)
+        # Create consistent summary layout (same as belanja jasa)
+        self._create_consistent_summary(total_label, total_jumlah)
 
-    def _create_standard_summary(self, total_label: str, total_jumlah: int):
-        """Create standard summary section"""
-        # Frame kiri untuk nama sekolah
-        left_frame = tk.Frame(self.summary_frame, bg='#ecf0f1')
-        left_frame.pack(side='left', fill='y', padx=(10, 20))
-        
-        sekolah_label = tk.Label(left_frame, text=f"SEKOLAH {self.processor.nama_sekolah}", 
-                                font=('Arial', 12, 'bold'), bg='#ecf0f1', fg='#2c3e50')
-        sekolah_label.pack(anchor='w')
-        
+    def _create_consistent_summary(self, total_label: str, total_jumlah: int):
+        """Create consistent summary section with center total and left school name"""
+        # Main total label at center
         self.total_label = tk.Label(self.summary_frame, text=f"{total_label}: {FormatUtils.format_currency(total_jumlah)}", 
                                    font=('Arial', 14, 'bold'), bg='#ecf0f1')
         self.total_label.pack(pady=5)
+        
+        # School name label at bottom left
+        self.sekolah_label = tk.Label(self.summary_frame, 
+                                    text=f"SEKOLAH {self.processor.nama_sekolah}", 
+                                    font=('Arial', 12, 'bold'), bg='#ecf0f1', fg='#2c3e50')
+        self.sekolah_label.pack(anchor='w', pady=(10, 5))
 
     def display_belanja_jasa_results(self, items: List[Dict]):
         """Display belanja jasa results with extended summary"""
@@ -292,7 +346,7 @@ class BOSBudgetAnalyzer:
         total_honor = sum(item['jumlah'] for item in honor_items)
         jasa_sesungguhnya = total_belanja_jasa - total_honor
         
-        # Create extended summary
+        # Create extended summary (unchanged from original)
         self.total_label = tk.Label(self.summary_frame, text=f"Total Belanja Jasa: {FormatUtils.format_currency(total_belanja_jasa)}", 
                                    font=('Arial', 14, 'bold'), bg='#ecf0f1')
         self.total_label.pack(pady=5)
@@ -308,7 +362,7 @@ class BOSBudgetAnalyzer:
         self.jasa_sesungguhnya_label.pack(pady=5)
         
         self.sekolah_label = tk.Label(self.summary_frame, 
-                                    text=f"SEKOLAH: {self.processor.nama_sekolah}", 
+                                    text=f"SEKOLAH {self.processor.nama_sekolah}", 
                                     font=('Arial', 12, 'bold'), bg='#ecf0f1', fg='#2c3e50')
         self.sekolah_label.pack(anchor='w', pady=(10, 5))
 
@@ -399,8 +453,8 @@ class BOSBudgetAnalyzer:
                 self.tree.tag_configure('highlight', background='#2ecc71', foreground='white')
                 self.tree.item(item_id, tags=('highlight',))
         
-        # Add school name label
-        sekolah_label = tk.Label(self.summary_frame, text=f"SEKOLAH: {self.processor.nama_sekolah}", 
+        # Add school name label using consistent layout
+        sekolah_label = tk.Label(self.summary_frame, text=f"SEKOLAH {self.processor.nama_sekolah}", 
                                 font=('Arial', 12, 'bold'), bg='#ecf0f1', fg='#2c3e50')
         sekolah_label.pack(anchor='w', pady=5)
 
