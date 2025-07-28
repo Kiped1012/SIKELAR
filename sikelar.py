@@ -325,7 +325,7 @@ class BOSBudgetAnalyzer:
             # Cari di baris 30, kolom I sampai N
             for col_idx in range(9, 15):  # I=9, J=10, K=11, L=12, M=13, N=14
                 cell_value = sheet.cell(row=30, column=col_idx).value
-                if isinstance(cell_value, (int, float)) and cell_value > 100000000:  # Minimal 100 juta
+                if isinstance(cell_value, (int, float)) and cell_value > 0:  # Minimal 100 juta
                     self.total_penerimaan = int(cell_value)
                     print(f"Debug: Total Penerimaan ditemukan di baris 30, kolom {chr(64+col_idx)}: Rp {self.total_penerimaan:,}")
                     return
@@ -334,7 +334,7 @@ class BOSBudgetAnalyzer:
             for row_idx in range(28, 33):  # Baris 28-32
                 for col_idx in range(9, 15):  # Kolom I-N
                     cell_value = sheet.cell(row=row_idx, column=col_idx).value
-                    if isinstance(cell_value, (int, float)) and cell_value > 100000000:
+                    if isinstance(cell_value, (int, float)) and cell_value > 0:
                         self.total_penerimaan = int(cell_value)
                         print(f"Debug: Total Penerimaan ditemukan di baris {row_idx}, kolom {chr(64+col_idx)}: Rp {self.total_penerimaan:,}")
                         return
@@ -1099,7 +1099,7 @@ class BOSBudgetAnalyzer:
             ("  BELANJA JASA", jasa_sesungguhnya, False),
             ("  BELANJA PEMELIHARAAN", total_pemeliharaan, False),
             ("  BELANJA PERJALANAN", total_perjalanan, False),
-            ("  BELANJA PERSEDIAAN", belanja_persediaan_ringkasan, True),
+            ("  BELANJA PERSEDIAAN", belanja_persediaan_ringkasan, False),
             ("BELANJA MODAL", belanja_modal, True),
             ("  PERALATAN DAN MESIN", total_peralatan, False),
             ("  ASET TETAP LAINNYA", total_aset_tetap, False),
