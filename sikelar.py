@@ -25,8 +25,6 @@ class BOSBudgetAnalyzer:
         
         # Kategori kode yang lebih spesifik berdasarkan gambar
         self.kategori_kode = {
-            'buku': ['05.02.01', '05.02.02', '05.02.03', '05.02.04', '05.02.05'],  # Pengadaan Buku
-            'sarana_prasarana': ['05.08.01', '05.08.08', '05.08.12'],  # Sarana Prasarana
             'honor': ['07.12'],  # Honor
             'belanja_persediaan': ['5.1.02.01'],  # Belanja Persediaan
             'belanja_jasa': ['5.1.02.02'],  # Belanja Jasa
@@ -116,9 +114,6 @@ class BOSBudgetAnalyzer:
         button_font = ('Arial', 11, 'bold')
         
         buttons_config = [
-            ("Buku", self.show_buku, "#29b9b9", 24),
-            ("Sarana & Prasarana", self.show_sarana_prasarana, "#29b9b9", 24),
-            ("Honor", self.show_honor, "#29b9b9", 24),
             ("Belanja Persediaan", self.show_belanja_persediaan, "#29b9b9", 24),
             ("Jasa", self.show_belanja_jasa, "#29b9b9", 24),
             ("Pemeliharaan", self.show_belanja_pemeliharaan, "#29b9b9", 24),
@@ -158,49 +153,7 @@ class BOSBudgetAnalyzer:
         
         self.results_frame = tk.Frame(self.root, bg='#ffffff', relief='sunken', bd=2)
         self.results_frame.pack(fill='both', expand=True, padx=10, pady=10)
-        
-        self.create_results_table()
 
-    def create_results_table(self):
-        for widget in self.results_frame.winfo_children():
-            widget.destroy()
-        
-        self.result_title = tk.Label(self.results_frame, text="Pilih kategori untuk melihat rincian anggaran", 
-                                    font=('Arial', 16, 'bold'), bg='#ffffff')
-        self.result_title.pack(pady=20)
-        
-        self.table_frame = tk.Frame(self.results_frame, bg='#ffffff')
-        self.table_frame.pack(fill='both', expand=True, padx=20, pady=10)
-        
-        # Default columns untuk kategori biasa
-        columns = ('Kode Kegiatan', 'Uraian', 'Jumlah (Rp)')
-        self.tree = ttk.Treeview(self.table_frame, columns=columns, show='headings', height=15)
-        
-        # Style untuk memperbesar font tabel
-        style = ttk.Style()
-        style.configure("Treeview", font=('Arial', 12))
-        style.configure("Treeview.Heading", font=('Arial', 14, 'bold'))
-        
-        for col in columns:
-            self.tree.heading(col, text=col)
-        self.tree.column('Kode Kegiatan', width=120, anchor='center')
-        self.tree.column('Uraian', width=400, anchor='w')
-        self.tree.column('Jumlah (Rp)', width=150, anchor='w')  # Diubah dari 'e' ke 'w' untuk rata kiri
-        
-        scrollbar = ttk.Scrollbar(self.table_frame, orient='vertical', command=self.tree.yview)
-        self.tree.configure(yscrollcommand=scrollbar.set)
-        self.tree.pack(side='left', fill='both', expand=True)
-        scrollbar.pack(side='right', fill='y')
-        
-        self.summary_frame = tk.Frame(self.results_frame, bg='#ecf0f1', relief='raised', bd=1)
-        self.summary_frame.pack(fill='x', padx=20, pady=10)
-        
-        self.total_label = tk.Label(self.summary_frame, text="", font=('Arial', 14, 'bold'), bg='#ecf0f1')
-        self.total_label.pack(pady=5)
-        
-        self.percentage_label = tk.Label(self.summary_frame, text="", font=('Arial', 14, 'bold'), bg='#ecf0f1')
-        self.percentage_label.pack(pady=5)
-    
     def create_belanja_persediaan_table(self):
         """Buat tabel khusus untuk belanja persediaan dengan kolom yang berbeda"""
         for widget in self.results_frame.winfo_children():
@@ -298,7 +251,7 @@ class BOSBudgetAnalyzer:
                 # ✅ Nonaktifkan tombol setelah upload berhasil
                 self.upload_btn.config(state='disabled')
 
-                messagebox.showinfo("Berhasil", f"File Excel berhasil diproses!\nTotal Penerimaan: Rp {self.total_penerimaan:,}\nDitemukan {len(self.budget_items)} item anggaran\nDitemukan {len(self.belanja_persediaan_items)} item belanja persediaan\nDitemukan {len(self.belanja_jasa_items)} item belanja jasa\nDitemukan {len(self.belanja_pemeliharaan_items)} item belanja pemeliharaan\nDitemukan {len(self.belanja_perjalanan_items)} item belanja perjalanan\nDitemukan {len(self.peralatan_items)} item peralatan dan mesin\nDitemukan {len(self.aset_tetap_items)} item aset tetap lainnya")
+                messagebox.showinfo("Berhasil", f"File Excel berhasil diproses!\nTotal Penerimaan: Rp {self.total_penerimaan:,}\nDitemukan {len(self.belanja_persediaan_items)} item belanja persediaan\nDitemukan {len(self.belanja_jasa_items)} item belanja jasa\nDitemukan {len(self.belanja_pemeliharaan_items)} item belanja pemeliharaan\nDitemukan {len(self.belanja_perjalanan_items)} item belanja perjalanan\nDitemukan {len(self.peralatan_items)} item peralatan dan mesin\nDitemukan {len(self.aset_tetap_items)} item aset tetap lainnya")
             except Exception as e:
                 messagebox.showerror("Error", f"Gagal membaca file Excel: {str(e)}")
 
@@ -396,9 +349,7 @@ class BOSBudgetAnalyzer:
     def extract_budget_data(self, sheet):
         """Ekstrak data budget berdasarkan kode kegiatan di kolom G"""
         # Semua kode yang dicari
-        all_target_codes = (self.kategori_kode['buku'] + 
-                           self.kategori_kode['sarana_prasarana'] + 
-                           self.kategori_kode['honor'])
+        all_target_codes = (self.kategori_kode['honor'])
         
         print(f"Debug: Mencari kode: {all_target_codes}")
         
@@ -860,38 +811,6 @@ class BOSBudgetAnalyzer:
         
         return sorted(filtered_items, key=lambda x: x['kode'])
     
-    def display_results(self, title: str, items: List[Dict], category_name: str):
-        """Tampilkan hasil ke tabel"""
-        self.result_title.config(text=title)
-        
-        # Hapus data lama
-        for item in self.tree.get_children():
-            self.tree.delete(item)
-        
-        total_jumlah = 0
-        if items:
-            for item in items:
-                formatted_jumlah = f"Rp {item['jumlah']:,}".replace(',', '.')
-                self.tree.insert('', 'end', values=(item['kode'], item['uraian'], formatted_jumlah))
-                total_jumlah += item['jumlah']
-        else:
-            self.tree.insert('', 'end', values=('', 'Tidak ada data ditemukan untuk kategori ini', 'Rp 0'))
-        
-        # Hitung persentase
-        percentage = (total_jumlah / self.total_penerimaan) * 100 if self.total_penerimaan else 0
-        
-        # Update summary
-        # UBAH BAGIAN INI - Layout horizontal
-        # Frame kiri untuk nama sekolah
-        left_frame = tk.Frame(self.summary_frame, bg='#ecf0f1')
-        left_frame.pack(side='left', fill='y', padx=(10, 20))
-        
-        sekolah_label = tk.Label(left_frame, text=f"SEKOLAH {self.nama_sekolah}", 
-                                font=('Arial', 12, 'bold'), bg='#ecf0f1', fg='#2c3e50')
-        sekolah_label.pack(anchor='w')
-        self.total_label.config(text=f"Total Alokasi {category_name}: Rp {total_jumlah:,}".replace(',', '.'))
-        self.percentage_label.config(text=f"Persentase dari Total Penerimaan: {percentage:.2f}%")
-    
     def display_belanja_persediaan_results(self, items: List[Dict]):
         """Tampilkan hasil belanja persediaan ke tabel khusus"""
         # Buat tabel khusus
@@ -1104,30 +1023,6 @@ class BOSBudgetAnalyzer:
                                 font=('Arial', 12, 'bold'), bg='#ecf0f1', fg='#2c3e50')
         sekolah_label.pack(anchor='w')
         self.total_label.config(text=f"Total Aset Tetap Lainnya: Rp {total_jumlah:,}".replace(',', '.'))
-
-    def show_buku(self):
-        if not self.budget_items:
-            messagebox.showwarning("Peringatan", "Data dalam kategori tersebut tidak ada atau file belum diupload!")
-            return
-        self.create_results_table()  # Reset ke tabel normal
-        items = self.filter_budget_by_codes(self.kategori_kode['buku'])
-        self.display_results("Rincian Anggaran Buku", items, "Buku")
-    
-    def show_sarana_prasarana(self):
-        if not self.budget_items:
-            messagebox.showwarning("Peringatan", "Data dalam kategori tersebut tidak ada atau file belum diupload!")
-            return
-        self.create_results_table()  # Reset ke tabel normal
-        items = self.filter_budget_by_codes(self.kategori_kode['sarana_prasarana'])
-        self.display_results("Rincian Anggaran Sarana & Prasarana", items, "Sarana & Prasarana")
-    
-    def show_honor(self):
-        if not self.budget_items:
-            messagebox.showwarning("Peringatan", "Data dalam kategori tersebut tidak ada atau file belum diupload!")
-            return
-        self.create_results_table()  # Reset ke tabel normal
-        items = self.filter_budget_by_codes(self.kategori_kode['honor'])
-        self.display_results("Rincian Anggaran Honor", items, "Honor")
     
     def show_belanja_persediaan(self):
         if not self.belanja_persediaan_items:
