@@ -1,6 +1,8 @@
 """
 Main GUI application for SIKELAR
 Handles user interface and interactions with enhanced scrolling
+Modified to support split canvas layout for RKAS and BKU realisasi
+Added dropdown for Triwulan selection in BKU section
 """
 
 import tkinter as tk
@@ -19,7 +21,7 @@ class BOSBudgetAnalyzer:
     def __init__(self, root):
         self.root = root
         self.root.title("SIKELAR")
-        self.root.geometry("1000x700")
+        self.root.geometry("1400x700")  # Increased width for split layout
         self.root.configure(bg='#f0f0f0')
         
         # Initialize data processor
@@ -28,6 +30,9 @@ class BOSBudgetAnalyzer:
         # For supporting active button highlight
         self.tab_buttons = {}
         self.active_tab = None
+        
+        # Triwulan selection variable
+        self.selected_triwulan = tk.StringVar(value="Triwulan 1")
 
         self.setup_ui()
 
@@ -36,7 +41,7 @@ class BOSBudgetAnalyzer:
         self._create_header()
         self._create_upload_section()
         self._create_button_section()
-        self._create_results_section()
+        self._create_split_results_section()
 
     def _create_header(self):
         """Create header section"""
@@ -44,7 +49,7 @@ class BOSBudgetAnalyzer:
         header_frame.pack(fill='x', padx=10, pady=(10,0))
         header_frame.pack_propagate(False)
         
-        title_label = tk.Label(header_frame, text="Sistem Informasi Pengelompokan Anggaran dan Rekening", 
+        title_label = tk.Label(header_frame, text="Sistem Perhitungan Anggaran RKAS dan Realisasi BKU", 
                             font=('Arial', 16, 'bold'), fg='white', bg='#2c3e50')
         title_label.pack(expand=True)
 
@@ -53,7 +58,7 @@ class BOSBudgetAnalyzer:
         upload_frame = tk.Frame(self.root, bg='#ecf0f1', relief='raised', bd=2)
         upload_frame.pack(fill='x', padx=10, pady=10)
         
-        upload_label = tk.Label(upload_frame, text="Upload File Excel RKAS:", 
+        upload_label = tk.Label(upload_frame, text="Upload RKAS dan BKU Dalam 1 File Excel :", 
                             font=('Arial', 12, 'bold'), bg='#ecf0f1')
         upload_label.pack(pady=10)
         
@@ -148,54 +153,182 @@ class BOSBudgetAnalyzer:
         self.scrollable_button_frame.bind('<Configure>', self._on_frame_configure)
         self.button_canvas.focus_set()
 
-    def _create_results_section(self):
-        """Create results display section with vertical scrolling"""
-        # Main container for results
-        self.results_main_frame = tk.Frame(self.root, bg='#ffffff', relief='sunken', bd=2)
-        self.results_main_frame.pack(fill='both', expand=True, padx=10, pady=10)
+    def _create_split_results_section(self):
+        """Create split results display section with RKAS on left and BKU on right"""
+        # Main container for split results
+        self.main_results_container = tk.Frame(self.root, bg='#f0f0f0')
+        self.main_results_container.pack(fill='both', expand=True, padx=10, pady=10)
         
-        # Create canvas for vertical scrolling
-        self.results_canvas = tk.Canvas(self.results_main_frame, bg='#ffffff', highlightthickness=0)
-        self.results_canvas.pack(side='left', fill='both', expand=True)
+        # Left side - RKAS
+        self._create_rkas_section()
         
-        # Vertical scrollbar for results
-        self.results_v_scrollbar = tk.Scrollbar(self.results_main_frame, orient='vertical', 
-                                              command=self.results_canvas.yview)
-        self.results_v_scrollbar.pack(side='right', fill='y')
-        self.results_canvas.configure(yscrollcommand=self.results_v_scrollbar.set)
+        # Separator
+        separator = tk.Frame(self.main_results_container, bg='#bdc3c7', width=2)
+        separator.pack(side='left', fill='y', padx=5)
         
-        # Scrollable frame inside canvas
-        self.results_frame = tk.Frame(self.results_canvas, bg='#ffffff')
-        self.results_canvas_window = self.results_canvas.create_window((0, 0), window=self.results_frame, anchor='nw')
-        
-        # Bind events for scrolling
-        self.results_frame.bind('<Configure>', self._on_results_frame_configure)
-        self.results_canvas.bind('<Configure>', self._on_results_canvas_configure)
-        self.results_canvas.bind("<MouseWheel>", self._on_results_mousewheel)
-        self.results_canvas.bind("<Button-4>", self._on_results_mousewheel)
-        self.results_canvas.bind("<Button-5>", self._on_results_mousewheel)
+        # Right side - BKU Realisasi
+        self._create_bku_section()
 
-    def _on_results_frame_configure(self, event):
-        """Handle results frame configure event for vertical scrolling"""
-        # Update scroll region when frame changes
-        self.results_canvas.configure(scrollregion=self.results_canvas.bbox("all"))
+    def _create_rkas_section(self):
+        """Create RKAS section on the left"""
+        # RKAS Container
+        self.rkas_container = tk.Frame(self.main_results_container, bg='#ffffff', relief='sunken', bd=2)
+        self.rkas_container.pack(side='left', fill='both', expand=True, padx=(0, 5))
+        
+        # RKAS Header
+        rkas_header = tk.Label(self.rkas_container, text="  RKAS (Rencana Kegiatan dan Anggaran Sekolah)", 
+                            font=('Arial', 14, 'bold'), bg='#3498db', fg='white', pady=10, 
+                            anchor='w')
+        rkas_header.pack(fill='x')
+        
+        # RKAS Canvas for scrolling
+        self.rkas_canvas = tk.Canvas(self.rkas_container, bg='#ffffff', highlightthickness=0)
+        self.rkas_canvas.pack(side='left', fill='both', expand=True)
+        
+        # RKAS Vertical scrollbar
+        self.rkas_v_scrollbar = tk.Scrollbar(self.rkas_container, orient='vertical', 
+                                           command=self.rkas_canvas.yview)
+        self.rkas_v_scrollbar.pack(side='right', fill='y')
+        self.rkas_canvas.configure(yscrollcommand=self.rkas_v_scrollbar.set)
+        
+        # RKAS Scrollable frame
+        self.rkas_frame = tk.Frame(self.rkas_canvas, bg='#ffffff')
+        self.rkas_canvas_window = self.rkas_canvas.create_window((0, 0), window=self.rkas_frame, anchor='nw')
+        
+        # Bind RKAS events
+        self.rkas_frame.bind('<Configure>', self._on_rkas_frame_configure)
+        self.rkas_canvas.bind('<Configure>', self._on_rkas_canvas_configure)
+        self.rkas_canvas.bind("<MouseWheel>", self._on_rkas_mousewheel)
+        self.rkas_canvas.bind("<Button-4>", self._on_rkas_mousewheel)
+        self.rkas_canvas.bind("<Button-5>", self._on_rkas_mousewheel)
 
-    def _on_results_canvas_configure(self, event):
-        """Handle results canvas configure event"""
-        # Update canvas window width to match canvas width
-        canvas_width = self.results_canvas.winfo_width()
-        self.results_canvas.itemconfig(self.results_canvas_window, width=canvas_width)
+    def _create_bku_section(self):
+        """Create BKU Realisasi section on the right with Triwulan dropdown"""
+        # BKU Container
+        self.bku_container = tk.Frame(self.main_results_container, bg='#ffffff', relief='sunken', bd=2)
+        self.bku_container.pack(side='right', fill='both', expand=True, padx=(5, 0))
+        
+        # BKU Header Frame (contains title and dropdown)
+        bku_header_frame = tk.Frame(self.bku_container, bg='#e74c3c')
+        bku_header_frame.pack(fill='x')
+        
+        # BKU Title (left side of header)
+        bku_title = tk.Label(bku_header_frame, text="BKU (Buku Kas Umum) - Realisasi", 
+                            font=('Arial', 14, 'bold'), bg='#e74c3c', fg='white')
+        bku_title.pack(side='left', padx=10, pady=10)
+        
+        # Triwulan Dropdown Frame (right side of header)
+        dropdown_frame = tk.Frame(bku_header_frame, bg='#e74c3c')
+        dropdown_frame.pack(side='right', padx=10, pady=10)
+        
+        # Triwulan Dropdown
+        self.triwulan_combobox = ttk.Combobox(dropdown_frame, 
+                                             textvariable=self.selected_triwulan,
+                                             values=["Triwulan 1", "Triwulan 2", "Triwulan 3", "Triwulan 4"],
+                                             state="readonly",
+                                             font=('Arial', 10, 'bold'),
+                                             width=12)
+        self.triwulan_combobox.pack(side='right')
+        
+        # Bind dropdown selection event
+        self.triwulan_combobox.bind('<<ComboboxSelected>>', self.on_triwulan_changed)
+        
+        # BKU Canvas for scrolling
+        self.bku_canvas = tk.Canvas(self.bku_container, bg='#ffffff', highlightthickness=0)
+        self.bku_canvas.pack(side='left', fill='both', expand=True)
+        
+        # BKU Vertical scrollbar
+        self.bku_v_scrollbar = tk.Scrollbar(self.bku_container, orient='vertical', 
+                                          command=self.bku_canvas.yview)
+        self.bku_v_scrollbar.pack(side='right', fill='y')
+        self.bku_canvas.configure(yscrollcommand=self.bku_v_scrollbar.set)
+        
+        # BKU Scrollable frame
+        self.bku_frame = tk.Frame(self.bku_canvas, bg='#ffffff')
+        self.bku_canvas_window = self.bku_canvas.create_window((0, 0), window=self.bku_frame, anchor='nw')
+        
+        # Bind BKU events
+        self.bku_frame.bind('<Configure>', self._on_bku_frame_configure)
+        self.bku_canvas.bind('<Configure>', self._on_bku_canvas_configure)
+        self.bku_canvas.bind("<MouseWheel>", self._on_bku_mousewheel)
+        self.bku_canvas.bind("<Button-4>", self._on_bku_mousewheel)
+        self.bku_canvas.bind("<Button-5>", self._on_bku_mousewheel)
+        
+        # Placeholder content for BKU section
+        self._create_bku_placeholder()
 
-    def _on_results_mousewheel(self, event):
-        """Handle mouse wheel scrolling for results area"""
-        # Windows and MacOS
+    def _create_bku_placeholder(self):
+        """Create placeholder content for BKU section"""
+        placeholder_label = tk.Label(self.bku_frame, 
+                                   text="Fitur Realisasi BKU\n(Akan dikembangkan)", 
+                                   font=('Arial', 16, 'italic'), 
+                                   fg='#7f8c8d', bg='#ffffff', pady=50)
+        placeholder_label.pack(expand=True)
+
+    def on_triwulan_changed(self, event=None):
+        """Handle triwulan dropdown selection change"""
+        selected = self.selected_triwulan.get()
+        print(f"Triwulan dipilih: {selected}")  # Debug print
+        
+        # Clear current BKU content
+        for widget in self.bku_frame.winfo_children():
+            widget.destroy()
+        
+        # Create content based on selected triwulan
+        info_label = tk.Label(self.bku_frame, 
+                             text=f"Data BKU untuk {selected}\n(Fitur akan dikembangkan)", 
+                             font=('Arial', 14, 'bold'), 
+                             fg='#2c3e50', bg='#ffffff', pady=30)
+        info_label.pack(expand=True)
+        
+        # Additional placeholder content
+        detail_label = tk.Label(self.bku_frame, 
+                               text=f"Menampilkan realisasi anggaran\nuntuk periode {selected}", 
+                               font=('Arial', 12), 
+                               fg='#7f8c8d', bg='#ffffff')
+        detail_label.pack(pady=10)
+        
+        # Update canvas scroll region
+        self.bku_frame.update_idletasks()
+        self.bku_canvas.configure(scrollregion=self.bku_canvas.bbox("all"))
+
+    # RKAS Canvas Event Handlers
+    def _on_rkas_frame_configure(self, event):
+        """Handle RKAS frame configure event for vertical scrolling"""
+        self.rkas_canvas.configure(scrollregion=self.rkas_canvas.bbox("all"))
+
+    def _on_rkas_canvas_configure(self, event):
+        """Handle RKAS canvas configure event"""
+        canvas_width = self.rkas_canvas.winfo_width()
+        self.rkas_canvas.itemconfig(self.rkas_canvas_window, width=canvas_width)
+
+    def _on_rkas_mousewheel(self, event):
+        """Handle mouse wheel scrolling for RKAS area"""
         if event.delta:
-            self.results_canvas.yview_scroll(int(-1*(event.delta/120)), "units")
-        # Linux
+            self.rkas_canvas.yview_scroll(int(-1*(event.delta/120)), "units")
         elif event.num == 4:
-            self.results_canvas.yview_scroll(-1, "units")
+            self.rkas_canvas.yview_scroll(-1, "units")
         elif event.num == 5:
-            self.results_canvas.yview_scroll(1, "units")
+            self.rkas_canvas.yview_scroll(1, "units")
+
+    # BKU Canvas Event Handlers
+    def _on_bku_frame_configure(self, event):
+        """Handle BKU frame configure event for vertical scrolling"""
+        self.bku_canvas.configure(scrollregion=self.bku_canvas.bbox("all"))
+
+    def _on_bku_canvas_configure(self, event):
+        """Handle BKU canvas configure event"""
+        canvas_width = self.bku_canvas.winfo_width()
+        self.bku_canvas.itemconfig(self.bku_canvas_window, width=canvas_width)
+
+    def _on_bku_mousewheel(self, event):
+        """Handle mouse wheel scrolling for BKU area"""
+        if event.delta:
+            self.bku_canvas.yview_scroll(int(-1*(event.delta/120)), "units")
+        elif event.num == 4:
+            self.bku_canvas.yview_scroll(-1, "units")
+        elif event.num == 5:
+            self.bku_canvas.yview_scroll(1, "units")
 
     def upload_excel(self):
         """Handle Excel file upload"""
@@ -208,8 +341,13 @@ class BOSBudgetAnalyzer:
                 # Disable upload button after successful upload
                 self.upload_btn.config(state='disabled')
 
+                # Info message dengan detail sheet
+                bku_status = "BKU sheet ditemukan" if self.processor.bku_data_available else "BKU sheet tidak ditemukan"
+                
                 messagebox.showinfo("Berhasil", 
                     f"File Excel berhasil diproses!\n"
+                    f"Sheet RKAS: Berhasil diproses\n"
+                    f"Sheet BKU: {bku_status}\n\n"
                     f"Total Penerimaan: {FormatUtils.format_currency(self.processor.total_penerimaan)}\n"
                     f"Ditemukan {len(self.processor.belanja_persediaan_items)} item belanja persediaan\n"
                     f"Ditemukan {len(self.processor.belanja_jasa_items)} item belanja jasa\n"
@@ -224,12 +362,23 @@ class BOSBudgetAnalyzer:
         """Reset all data and UI"""
         self.processor.reset_data()
 
-        # Clear results display
-        for widget in self.results_frame.winfo_children():
+        # Clear RKAS display
+        for widget in self.rkas_frame.winfo_children():
             widget.destroy()
 
-        # Reset scroll position
-        self.results_canvas.yview_moveto(0)
+        # Clear BKU display and recreate placeholder
+        for widget in self.bku_frame.winfo_children():
+            widget.destroy()
+        
+        # Re-add BKU placeholder
+        self._create_bku_placeholder()
+        
+        # Reset triwulan selection to default
+        self.selected_triwulan.set("Triwulan 1")
+
+        # Reset scroll positions
+        self.rkas_canvas.yview_moveto(0)
+        self.bku_canvas.yview_moveto(0)
 
         # Clear file label
         self.file_label.config(text="Belum ada file yang dipilih")
@@ -240,52 +389,52 @@ class BOSBudgetAnalyzer:
         messagebox.showinfo("Reset", "Data berhasil dibersihkan.")
 
     def create_standard_table(self, title, columns):
-        """Create standard table layout with improved scrolling"""
-        for widget in self.results_frame.winfo_children():
+        """Create standard table layout in RKAS section"""
+        for widget in self.rkas_frame.winfo_children():
             widget.destroy()
         
         # Reset canvas scroll position to top
-        self.results_canvas.yview_moveto(0)
+        self.rkas_canvas.yview_moveto(0)
         
-        self.result_title = tk.Label(self.results_frame, text=title, 
-                                    font=('Arial', 16, 'bold'), bg='#ffffff')
+        self.result_title = tk.Label(self.rkas_frame, text=title, 
+                                    font=('Arial', 14, 'bold'), bg='#ffffff')
         self.result_title.pack(pady=20)
         
-        self.table_frame = tk.Frame(self.results_frame, bg='#ffffff')
-        self.table_frame.pack(fill='both', expand=True, padx=20, pady=10)
+        self.table_frame = tk.Frame(self.rkas_frame, bg='#ffffff')
+        self.table_frame.pack(fill='both', expand=True, padx=10, pady=10)
         
-        # Limit table height to prevent it from taking too much space
-        self.tree = ttk.Treeview(self.table_frame, columns=columns, show='headings', height=12)
+        # Adjust table height for split view
+        self.tree = ttk.Treeview(self.table_frame, columns=columns, show='headings', height=15)
         
         # Style untuk memperbesar font tabel
         style = ttk.Style()
-        style.configure("Treeview", font=('Arial', 12))
-        style.configure("Treeview.Heading", font=('Arial', 14, 'bold'))
+        style.configure("Treeview", font=('Arial', 10))
+        style.configure("Treeview.Heading", font=('Arial', 12, 'bold'))
         
         for col in columns:
             self.tree.heading(col, text=col)
         
-        # Set column widths based on content
+        # Adjust column widths for split view
         if len(columns) == 4:  # Standard detail table
-            self.tree.column(columns[0], width=150, anchor='center')  # Kode Rekening
-            self.tree.column(columns[1], width=120, anchor='center')  # Kode Kegiatan
-            self.tree.column(columns[2], width=350, anchor='w')       # Uraian
-            self.tree.column(columns[3], width=150, anchor='w')       # Jumlah
+            self.tree.column(columns[0], width=120, anchor='center')  # Kode Rekening
+            self.tree.column(columns[1], width=100, anchor='center')  # Kode Kegiatan
+            self.tree.column(columns[2], width=280, anchor='w')       # Uraian
+            self.tree.column(columns[3], width=120, anchor='w')       # Jumlah
         elif len(columns) == 2:  # Summary table
-            self.tree.column(columns[0], width=400, anchor='w')       # Kategori
-            self.tree.column(columns[1], width=200, anchor='w')       # Jumlah
+            self.tree.column(columns[0], width=320, anchor='w')       # Kategori
+            self.tree.column(columns[1], width=160, anchor='w')       # Jumlah
         
         table_scrollbar = ttk.Scrollbar(self.table_frame, orient='vertical', command=self.tree.yview)
         self.tree.configure(yscrollcommand=table_scrollbar.set)
         self.tree.pack(side='left', fill='both', expand=True)
         table_scrollbar.pack(side='right', fill='y')
         
-        self.summary_frame = tk.Frame(self.results_frame, bg='#ecf0f1', relief='raised', bd=1)
-        self.summary_frame.pack(fill='x', padx=20, pady=10)
+        self.summary_frame = tk.Frame(self.rkas_frame, bg='#ecf0f1', relief='raised', bd=1)
+        self.summary_frame.pack(fill='x', padx=10, pady=10)
         
         # Force update of canvas scroll region
-        self.results_frame.update_idletasks()
-        self.results_canvas.configure(scrollregion=self.results_canvas.bbox("all"))
+        self.rkas_frame.update_idletasks()
+        self.rkas_canvas.configure(scrollregion=self.rkas_canvas.bbox("all"))
 
     def display_standard_results(self, items: List[Dict], title: str, total_label: str):
         """Display results in standard format with consistent summary layout"""
@@ -306,20 +455,20 @@ class BOSBudgetAnalyzer:
         else:
             self.tree.insert('', 'end', values=('', '', 'Tidak ada data ditemukan untuk kategori ini', 'Rp 0'))
         
-        # Create consistent summary layout (same as belanja jasa)
+        # Create consistent summary layout
         self._create_consistent_summary(total_label, total_jumlah)
 
     def _create_consistent_summary(self, total_label: str, total_jumlah: int):
         """Create consistent summary section with center total and left school name"""
         # Main total label at center
         self.total_label = tk.Label(self.summary_frame, text=f"{total_label}: {FormatUtils.format_currency(total_jumlah)}", 
-                                   font=('Arial', 14, 'bold'), bg='#ecf0f1')
+                                   font=('Arial', 12, 'bold'), bg='#ecf0f1')
         self.total_label.pack(pady=5)
         
         # School name label at bottom left
         self.sekolah_label = tk.Label(self.summary_frame, 
                                     text=f"SEKOLAH {self.processor.nama_sekolah}", 
-                                    font=('Arial', 12, 'bold'), bg='#ecf0f1', fg='#2c3e50')
+                                    font=('Arial', 10, 'bold'), bg='#ecf0f1', fg='#2c3e50')
         self.sekolah_label.pack(anchor='w', pady=(10, 5))
 
     def display_belanja_jasa_results(self, items: List[Dict]):
@@ -346,27 +495,27 @@ class BOSBudgetAnalyzer:
         total_honor = sum(item['jumlah'] for item in honor_items)
         jasa_sesungguhnya = total_belanja_jasa - total_honor
         
-        # Create extended summary (unchanged from original)
+        # Create extended summary
         self.total_label = tk.Label(self.summary_frame, text=f"Total Belanja Jasa: {FormatUtils.format_currency(total_belanja_jasa)}", 
-                                   font=('Arial', 14, 'bold'), bg='#ecf0f1')
+                                   font=('Arial', 12, 'bold'), bg='#ecf0f1')
         self.total_label.pack(pady=5)
         
         self.honor_label = tk.Label(self.summary_frame, 
                                 text=f"Pembayaran Honor: {FormatUtils.format_currency(total_honor)}", 
-                                font=('Arial', 14, 'bold'), bg='#ecf0f1')
+                                font=('Arial', 12, 'bold'), bg='#ecf0f1')
         self.honor_label.pack(pady=5)
         
         self.jasa_sesungguhnya_label = tk.Label(self.summary_frame, 
                                             text=f"Jasa Sesungguhnya: {FormatUtils.format_currency(jasa_sesungguhnya)}", 
-                                            font=('Arial', 14, 'bold'), bg='#ecf0f1', fg='#e74c3c')
+                                            font=('Arial', 12, 'bold'), bg='#ecf0f1', fg='#e74c3c')
         self.jasa_sesungguhnya_label.pack(pady=5)
         
         self.sekolah_label = tk.Label(self.summary_frame, 
                                     text=f"SEKOLAH {self.processor.nama_sekolah}", 
-                                    font=('Arial', 12, 'bold'), bg='#ecf0f1', fg='#2c3e50')
+                                    font=('Arial', 10, 'bold'), bg='#ecf0f1', fg='#2c3e50')
         self.sekolah_label.pack(anchor='w', pady=(10, 5))
 
-    # Navigation methods
+    # Navigation methods (unchanged, but now display in RKAS section)
     def show_belanja_persediaan(self):
         if not self.processor.belanja_persediaan_items:
             messagebox.showwarning("Peringatan", "Data dalam kategori tersebut tidak ada atau file belum diupload!")
@@ -455,7 +604,7 @@ class BOSBudgetAnalyzer:
         
         # Add school name label using consistent layout
         sekolah_label = tk.Label(self.summary_frame, text=f"SEKOLAH {self.processor.nama_sekolah}", 
-                                font=('Arial', 12, 'bold'), bg='#ecf0f1', fg='#2c3e50')
+                                font=('Arial', 10, 'bold'), bg='#ecf0f1', fg='#2c3e50')
         sekolah_label.pack(anchor='w', pady=5)
 
     # Canvas scrolling event handlers

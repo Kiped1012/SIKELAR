@@ -35,14 +35,55 @@ class BOSDataProcessor:
         self.peralatan_items = []
         self.aset_tetap_items = []
         self.nama_sekolah = ""
+        self.bku_data_available = False
 
     def extract_excel_data(self, file_path):
-        """Ekstrak data dari file Excel dengan struktur spesifik RKAS"""
+        """Ekstrak data dari file Excel dengan struktur spesifik RKAS dan BKU"""
         workbook = openpyxl.load_workbook(file_path)
-        sheet = workbook.active
         
         # Reset data
         self.reset_data()
+        
+        # Tentukan sheet yang akan digunakan
+        try:
+            # Sheet 1 untuk RKAS (biasanya sheet pertama atau bernama 'RKAS')
+            if 'RKAS' in workbook.sheetnames:
+                rkas_sheet = workbook['RKAS']
+            else:
+                rkas_sheet = workbook.worksheets[0]  # Sheet pertama
+            
+            # Sheet 2 untuk BKU (biasanya sheet kedua atau bernama 'BKU')
+            if 'BKU' in workbook.sheetnames:
+                bku_sheet = workbook['BKU']
+            elif len(workbook.worksheets) > 1:
+                bku_sheet = workbook.worksheets[1]  # Sheet kedua
+            else:
+                bku_sheet = None  # Tidak ada sheet BKU
+                
+        except Exception as e:
+            print(f"Error accessing sheets: {e}")
+            # Fallback ke sheet aktif
+            rkas_sheet = workbook.active
+            bku_sheet = None
+        
+        # Proses RKAS dari sheet 1
+        self.process_rkas_data(rkas_sheet)
+        
+        # Proses BKU dari sheet 2 (jika ada)
+        if bku_sheet:
+            self.process_bku_data(bku_sheet)
+        
+        print(f"Debug: Total Penerimaan: Rp {self.total_penerimaan:,}")
+        print(f"Debug: Found {len(self.belanja_persediaan_items)} belanja persediaan items")
+        print(f"Debug: Found {len(self.belanja_jasa_items)} belanja jasa items")
+        print(f"Debug: Found {len(self.belanja_pemeliharaan_items)} belanja pemeliharaan items")
+        print(f"Debug: Found {len(self.belanja_perjalanan_items)} belanja perjalanan items")
+        print(f"Debug: Found {len(self.peralatan_items)} peralatan items")
+        print(f"Debug: Found {len(self.aset_tetap_items)} aset tetap items")
+
+    def process_rkas_data(self, sheet):
+        """Proses data RKAS dari sheet yang ditentukan"""
+        print("Debug: Processing RKAS data from Sheet 1")
         
         # Ekstrak nama sekolah
         self.extract_nama_sekolah(sheet)
@@ -70,14 +111,17 @@ class BOSDataProcessor:
 
         # Ekstrak data aset tetap lainnya berdasarkan kode rekening
         self.extract_aset_tetap_data(sheet)
+
+    def process_bku_data(self, sheet):
+        """Proses data BKU dari sheet yang ditentukan - PLACEHOLDER"""
+        print("Debug: Processing BKU data from Sheet 2")
         
-        print(f"Debug: Total Penerimaan: Rp {self.total_penerimaan:,}")
-        print(f"Debug: Found {len(self.belanja_persediaan_items)} belanja persediaan items")
-        print(f"Debug: Found {len(self.belanja_jasa_items)} belanja jasa items")
-        print(f"Debug: Found {len(self.belanja_pemeliharaan_items)} belanja pemeliharaan items")
-        print(f"Debug: Found {len(self.belanja_perjalanan_items)} belanja perjalanan items")
-        print(f"Debug: Found {len(self.peralatan_items)} peralatan items")
-        print(f"Debug: Found {len(self.aset_tetap_items)} aset tetap items")
+        # TODO: Implementasi nanti sesuai kebutuhan BKU
+        # Sementara hanya print info bahwa sheet BKU ditemukan
+        print(f"Debug: BKU sheet found with {sheet.max_row} rows and {sheet.max_column} columns")
+        
+        # Placeholder - bisa ditambahkan variabel untuk menyimpan data BKU
+        self.bku_data_available = True
 
     def extract_nama_sekolah(self, sheet):
         """Ekstrak nama sekolah dari baris 7, kolom F-AF (merged)"""
