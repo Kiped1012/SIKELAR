@@ -36,6 +36,12 @@ class BOSDataProcessor:
         self.aset_tetap_items = []
         self.nama_sekolah = ""
         self.bku_data_available = False
+        self.bku_belanja_persediaan_data = {
+            'Triwulan 1': [],
+            'Triwulan 2': [],
+            'Triwulan 3': [],
+            'Triwulan 4': []
+        }
 
     def extract_excel_data(self, file_path):
         """Ekstrak data dari file Excel dengan struktur spesifik RKAS dan BKU"""
@@ -113,15 +119,231 @@ class BOSDataProcessor:
         self.extract_aset_tetap_data(sheet)
 
     def process_bku_data(self, sheet):
-        """Proses data BKU dari sheet yang ditentukan - PLACEHOLDER"""
+        """Proses data BKU dari sheet yang ditentukan - IMPLEMENTASI LENGKAP"""
         print("Debug: Processing BKU data from Sheet 2")
         
-        # TODO: Implementasi nanti sesuai kebutuhan BKU
-        # Sementara hanya print info bahwa sheet BKU ditemukan
+        # Validasi sheet
+        if not sheet:
+            print("Debug: BKU sheet not found")
+            self.bku_data_available = False
+            return
+        
         print(f"Debug: BKU sheet found with {sheet.max_row} rows and {sheet.max_column} columns")
         
-        # Placeholder - bisa ditambahkan variabel untuk menyimpan data BKU
+        # Ekstrak data BKU untuk semua triwulan
+        self.extract_bku_belanja_persediaan_data(sheet)
+        
         self.bku_data_available = True
+
+    def extract_bku_belanja_persediaan_data(self, sheet):
+        """Ekstrak data realisasi belanja persediaan dari BKU untuk semua triwulan"""
+        target_code = '5.1.02.01'
+        
+        # Initialize storage untuk semua triwulan
+        self.bku_belanja_persediaan_data = {
+            'Triwulan 1': [],
+            'Triwulan 2': [],
+            'Triwulan 3': [],
+            'Triwulan 4': []
+        }
+        
+        print(f"Debug: Mencari realisasi BKU untuk kode rekening: {target_code}")
+        
+        # Collect all raw data first
+        raw_items = []
+        
+        # Iterasi semua baris untuk mencari kode rekening
+        for row_idx in range(1, sheet.max_row + 1):
+            # Ekstrak kode rekening dari kolom F-G (merged)
+            kode_rekening = self.excel_utils.extract_merged_text_strict(sheet, row_idx, range(6, 8))
+            
+            if not kode_rekening or target_code not in kode_rekening:
+                continue
+            
+            # Ekstrak tanggal dari kolom A-C (merged)
+            tanggal_str = self.excel_utils.extract_merged_text(sheet, row_idx, range(1, 4))
+            if not tanggal_str:
+                continue
+            
+            # Parse tanggal
+            try:
+                tanggal = self._parse_date_string(tanggal_str)
+                if not tanggal:
+                    continue
+            except:
+                continue
+            
+            # Ekstrak kode kegiatan dari kolom D-E (merged)
+            kode_kegiatan = self.excel_utils.extract_merged_text(sheet, row_idx, range(4, 6))
+            if not kode_kegiatan or not self.excel_utils.is_valid_kegiatan_format(kode_kegiatan):
+                continue
+            
+            # Ekstrak uraian dari kolom K-M (merged)
+            uraian = self.excel_utils.extract_merged_text(sheet, row_idx, range(11, 14))
+            if not uraian:
+                continue
+            
+            # Skip baris dengan kata "Terima" atau "Setor"
+            if "terima" in uraian.lower() or "setor" in uraian.lower():
+                print(f"Debug: Skipping row with Terima/Setor: {uraian}")
+                continue
+            
+            # Ekstrak jumlah pengeluaran dari kolom Q-S (merged)
+            jumlah = self.excel_utils.extract_merged_number(sheet, row_idx, range(17, 20))
+            if jumlah <= 0:
+                continue
+            
+            raw_items.append({
+                'tanggal': tanggal,
+                'kode_rekening': kode_rekening,
+                'kode_kegiatan': kode_kegiatan,
+                'uraian': uraian,
+                'jumlah': jumlah,
+                'row': row_idx
+            })
+            
+            print(f"Debug: Found BKU item - {tanggal} | {kode_rekening} | {kode_kegiatan} | {uraian} - Rp {jumlah:,}")
+        
+        # Group and sum items by date, kode_kegiatan, kode_rekening, and uraian
+        grouped_items = self._group_and_sum_bku_items(raw_items)
+        
+        # Distribute items to appropriate triwulan
+        for item in grouped_items:
+            triwulan = self._get_triwulan_from_date(item['tanggal'])
+            if triwulan:
+                # Check if triwulan is complete
+                if self._is_triwulan_complete(item['tanggal'], sheet):
+                    self.bku_belanja_persediaan_data[triwulan].append(item)
+
+    def _parse_date_string(self, date_str):
+        """Parse tanggal dari string dengan format DD-MM-YYYY"""
+        import datetime
+        
+        try:
+            # Handle different date formats
+            date_str = str(date_str).strip()
+            
+            # Try DD-MM-YYYY format
+            if '-' in date_str:
+                parts = date_str.split('-')
+                if len(parts) == 3:
+                    day, month, year = parts
+                    return datetime.date(int(year), int(month), int(day))
+            
+            # Try other common formats
+            for fmt in ['%d-%m-%Y', '%d/%m/%Y', '%Y-%m-%d']:
+                try:
+                    return datetime.datetime.strptime(date_str, fmt).date()
+                except:
+                    continue
+            
+            return None
+        except Exception as e:
+            print(f"Debug: Error parsing date {date_str}: {e}")
+            return None
+
+    def _group_and_sum_bku_items(self, raw_items):
+        """Group items by tanggal, kode_kegiatan, kode_rekening, uraian dan sum jumlah"""
+        from collections import defaultdict
+        
+        grouped = defaultdict(lambda: {
+            'tanggal': None,
+            'kode_rekening': '',
+            'kode_kegiatan': '',
+            'uraian': '',
+            'jumlah': 0,
+            'count': 0
+        })
+        
+        for item in raw_items:
+            # Create key untuk grouping
+            key = f"{item['tanggal']}_{item['kode_kegiatan']}_{item['kode_rekening']}_{item['uraian']}"
+            
+            grouped[key]['tanggal'] = item['tanggal']
+            grouped[key]['kode_rekening'] = item['kode_rekening']
+            grouped[key]['kode_kegiatan'] = item['kode_kegiatan']
+            grouped[key]['uraian'] = item['uraian']
+            grouped[key]['jumlah'] += item['jumlah']
+            grouped[key]['count'] += 1
+        
+        # Convert to list and log duplicates
+        result = []
+        for key, data in grouped.items():
+            if data['count'] > 1:
+                print(f"Debug: Grouped {data['count']} items for: {data['uraian']} - Total: Rp {data['jumlah']:,}")
+            
+            result.append({
+                'tanggal': data['tanggal'],
+                'kode_rekening': data['kode_rekening'],
+                'kode_kegiatan': data['kode_kegiatan'],
+                'uraian': data['uraian'],
+                'jumlah': data['jumlah']
+            })
+        
+        return sorted(result, key=lambda x: (x['tanggal'], x['kode_kegiatan'], x['uraian']))
+
+    def _get_triwulan_from_date(self, date_obj):
+        """Tentukan triwulan berdasarkan tanggal"""
+        month = date_obj.month
+        
+        if 1 <= month <= 3:
+            return 'Triwulan 1'
+        elif 4 <= month <= 6:
+            return 'Triwulan 2'
+        elif 7 <= month <= 9:
+            return 'Triwulan 3'
+        elif 10 <= month <= 12:
+            return 'Triwulan 4'
+        
+        return None
+
+    def _is_triwulan_complete(self, date_obj, sheet):
+        """Cek apakah triwulan sudah lengkap (3 bulan)"""
+        import datetime
+        
+        month = date_obj.month
+        year = date_obj.year
+        
+        # Tentukan bulan-bulan dalam triwulan
+        if 1 <= month <= 3:
+            required_months = [1, 2, 3]
+        elif 4 <= month <= 6:
+            required_months = [4, 5, 6]
+        elif 7 <= month <= 9:
+            required_months = [7, 8, 9]
+        elif 10 <= month <= 12:
+            required_months = [10, 11, 12]
+        else:
+            return False
+        
+        # Cek keberadaan data untuk semua bulan dalam triwulan
+        found_months = set()
+        
+        for row_idx in range(1, sheet.max_row + 1):
+            tanggal_str = self.excel_utils.extract_merged_text(sheet, row_idx, range(1, 4))
+            if tanggal_str:
+                try:
+                    check_date = self._parse_date_string(tanggal_str)
+                    if check_date and check_date.year == year and check_date.month in required_months:
+                        found_months.add(check_date.month)
+                except:
+                    continue
+        
+        # Triwulan dianggap lengkap jika minimal ada data bulan terakhir
+        last_month = max(required_months)
+        is_complete = last_month in found_months
+        
+        triwulan_name = self._get_triwulan_from_date(date_obj)
+        print(f"Debug: {triwulan_name} complete check - Required months: {required_months}, Found: {sorted(found_months)}, Complete: {is_complete}")
+        
+        return is_complete
+
+    def get_bku_belanja_persediaan_by_triwulan(self, triwulan):
+        """Get data realisasi belanja persediaan berdasarkan triwulan"""
+        if not hasattr(self, 'bku_belanja_persediaan_data'):
+            return []
+        
+        return self.bku_belanja_persediaan_data.get(triwulan, [])
 
     def extract_nama_sekolah(self, sheet):
         """Ekstrak nama sekolah dari baris 7, kolom F-AF (merged)"""
