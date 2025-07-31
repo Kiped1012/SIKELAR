@@ -42,6 +42,36 @@ class BOSDataProcessor:
             'Triwulan 3': [],
             'Triwulan 4': []
         }
+        self.bku_belanja_pemeliharaan_data = {
+            'Triwulan 1': [],
+            'Triwulan 2': [],
+            'Triwulan 3': [],
+            'Triwulan 4': []
+        }
+        self.bku_belanja_perjalanan_data = {
+            'Triwulan 1': [],
+            'Triwulan 2': [],
+            'Triwulan 3': [],
+            'Triwulan 4': []
+        }
+        self.bku_peralatan_data = {
+            'Triwulan 1': [],
+            'Triwulan 2': [],
+            'Triwulan 3': [],
+            'Triwulan 4': []
+        }
+        self.bku_aset_tetap_data = {
+            'Triwulan 1': [],
+            'Triwulan 2': [],
+            'Triwulan 3': [],
+            'Triwulan 4': []
+        }
+        self.bku_belanja_jasa_data = {
+            'Triwulan 1': [],
+            'Triwulan 2': [],
+            'Triwulan 3': [],
+            'Triwulan 4': []
+        }
 
     def extract_excel_data(self, file_path):
         """Ekstrak data dari file Excel dengan struktur spesifik RKAS dan BKU"""
@@ -132,6 +162,11 @@ class BOSDataProcessor:
         
         # Ekstrak data BKU untuk semua triwulan
         self.extract_bku_belanja_persediaan_data(sheet)
+        self.extract_bku_belanja_pemeliharaan_data(sheet)
+        self.extract_bku_belanja_perjalanan_data(sheet)
+        self.extract_bku_peralatan_data(sheet)
+        self.extract_bku_aset_tetap_data(sheet)
+        self.extract_bku_belanja_jasa_data(sheet)
         
         self.bku_data_available = True
 
@@ -214,6 +249,442 @@ class BOSDataProcessor:
                 # Check if triwulan is complete
                 if self._is_triwulan_complete(item['tanggal'], sheet):
                     self.bku_belanja_persediaan_data[triwulan].append(item)
+
+    def extract_bku_belanja_pemeliharaan_data(self, sheet):
+        """Ekstrak data realisasi belanja pemeliharaan dari BKU untuk semua triwulan"""
+        target_code = '5.1.02.03'
+        
+        # Initialize storage untuk semua triwulan
+        self.bku_belanja_pemeliharaan_data = {
+            'Triwulan 1': [],
+            'Triwulan 2': [],
+            'Triwulan 3': [],
+            'Triwulan 4': []
+        }
+        
+        print(f"Debug: Mencari realisasi BKU untuk kode rekening: {target_code}")
+        
+        # Collect all raw data first
+        raw_items = []
+        
+        # Iterasi semua baris untuk mencari kode rekening
+        for row_idx in range(1, sheet.max_row + 1):
+            # Ekstrak kode rekening dari kolom F-G (merged)
+            kode_rekening = self.excel_utils.extract_merged_text_strict(sheet, row_idx, range(6, 8))
+            
+            if not kode_rekening or target_code not in kode_rekening:
+                continue
+            
+            # Ekstrak tanggal dari kolom A-C (merged)
+            tanggal_str = self.excel_utils.extract_merged_text(sheet, row_idx, range(1, 4))
+            if not tanggal_str:
+                continue
+            
+            # Parse tanggal
+            try:
+                tanggal = self._parse_date_string(tanggal_str)
+                if not tanggal:
+                    continue
+            except:
+                continue
+            
+            # Ekstrak kode kegiatan dari kolom D-E (merged)
+            kode_kegiatan = self.excel_utils.extract_merged_text(sheet, row_idx, range(4, 6))
+            if not kode_kegiatan or not self.excel_utils.is_valid_kegiatan_format(kode_kegiatan):
+                continue
+            
+            # Ekstrak uraian dari kolom K-M (merged)
+            uraian = self.excel_utils.extract_merged_text(sheet, row_idx, range(11, 14))
+            if not uraian:
+                continue
+            
+            # Skip baris dengan kata "Terima" atau "Setor"
+            if "terima" in uraian.lower() or "setor" in uraian.lower():
+                print(f"Debug: Skipping row with Terima/Setor: {uraian}")
+                continue
+            
+            # Ekstrak jumlah pengeluaran dari kolom Q-S (merged)
+            jumlah = self.excel_utils.extract_merged_number(sheet, row_idx, range(17, 20))
+            if jumlah <= 0:
+                continue
+            
+            raw_items.append({
+                'tanggal': tanggal,
+                'kode_rekening': kode_rekening,
+                'kode_kegiatan': kode_kegiatan,
+                'uraian': uraian,
+                'jumlah': jumlah,
+                'row': row_idx
+            })
+            
+            print(f"Debug: Found BKU pemeliharaan item - {tanggal} | {kode_rekening} | {kode_kegiatan} | {uraian} - Rp {jumlah:,}")
+        
+        # Group and sum items by date, kode_kegiatan, kode_rekening, and uraian
+        grouped_items = self._group_and_sum_bku_items(raw_items)
+        
+        # Distribute items to appropriate triwulan
+        for item in grouped_items:
+            triwulan = self._get_triwulan_from_date(item['tanggal'])
+            if triwulan:
+                # Check if triwulan is complete
+                if self._is_triwulan_complete(item['tanggal'], sheet):
+                    self.bku_belanja_pemeliharaan_data[triwulan].append(item)
+
+    def get_bku_belanja_pemeliharaan_by_triwulan(self, triwulan):
+        """Get data realisasi belanja pemeliharaan berdasarkan triwulan"""
+        if not hasattr(self, 'bku_belanja_pemeliharaan_data'):
+            return []
+        
+        return self.bku_belanja_pemeliharaan_data.get(triwulan, [])
+
+    def extract_bku_belanja_perjalanan_data(self, sheet):
+        """Ekstrak data realisasi belanja perjalanan dari BKU untuk semua triwulan"""
+        target_code = '5.1.02.04'
+        
+        # Initialize storage untuk semua triwulan
+        self.bku_belanja_perjalanan_data = {
+            'Triwulan 1': [],
+            'Triwulan 2': [],
+            'Triwulan 3': [],
+            'Triwulan 4': []
+        }
+        
+        print(f"Debug: Mencari realisasi BKU untuk kode rekening: {target_code}")
+        
+        # Collect all raw data first
+        raw_items = []
+        
+        # Iterasi semua baris untuk mencari kode rekening
+        for row_idx in range(1, sheet.max_row + 1):
+            # Ekstrak kode rekening dari kolom F-G (merged)
+            kode_rekening = self.excel_utils.extract_merged_text_strict(sheet, row_idx, range(6, 8))
+            
+            if not kode_rekening or target_code not in kode_rekening:
+                continue
+            
+            # Ekstrak tanggal dari kolom A-C (merged)
+            tanggal_str = self.excel_utils.extract_merged_text(sheet, row_idx, range(1, 4))
+            if not tanggal_str:
+                continue
+            
+            # Parse tanggal
+            try:
+                tanggal = self._parse_date_string(tanggal_str)
+                if not tanggal:
+                    continue
+            except:
+                continue
+            
+            # Ekstrak kode kegiatan dari kolom D-E (merged)
+            kode_kegiatan = self.excel_utils.extract_merged_text(sheet, row_idx, range(4, 6))
+            if not kode_kegiatan or not self.excel_utils.is_valid_kegiatan_format(kode_kegiatan):
+                continue
+            
+            # Ekstrak uraian dari kolom K-M (merged)
+            uraian = self.excel_utils.extract_merged_text(sheet, row_idx, range(11, 14))
+            if not uraian:
+                continue
+            
+            # Skip baris dengan kata "Terima" atau "Setor"
+            if "terima" in uraian.lower() or "setor" in uraian.lower():
+                print(f"Debug: Skipping row with Terima/Setor: {uraian}")
+                continue
+            
+            # Ekstrak jumlah pengeluaran dari kolom Q-S (merged)
+            jumlah = self.excel_utils.extract_merged_number(sheet, row_idx, range(17, 20))
+            if jumlah <= 0:
+                continue
+            
+            raw_items.append({
+                'tanggal': tanggal,
+                'kode_rekening': kode_rekening,
+                'kode_kegiatan': kode_kegiatan,
+                'uraian': uraian,
+                'jumlah': jumlah,
+                'row': row_idx
+            })
+            
+            print(f"Debug: Found BKU perjalanan item - {tanggal} | {kode_rekening} | {kode_kegiatan} | {uraian} - Rp {jumlah:,}")
+        
+        # Group and sum items by date, kode_kegiatan, kode_rekening, and uraian
+        grouped_items = self._group_and_sum_bku_items(raw_items)
+        
+        # Distribute items to appropriate triwulan
+        for item in grouped_items:
+            triwulan = self._get_triwulan_from_date(item['tanggal'])
+            if triwulan:
+                # Check if triwulan is complete
+                if self._is_triwulan_complete(item['tanggal'], sheet):
+                    self.bku_belanja_perjalanan_data[triwulan].append(item)
+
+    def get_bku_belanja_perjalanan_by_triwulan(self, triwulan):
+        """Get data realisasi belanja perjalanan berdasarkan triwulan"""
+        if not hasattr(self, 'bku_belanja_perjalanan_data'):
+            return []
+        
+        return self.bku_belanja_perjalanan_data.get(triwulan, [])
+    
+    def extract_bku_peralatan_data(self, sheet):
+        """Ekstrak data realisasi peralatan dari BKU untuk semua triwulan"""
+        target_code = '5.2.02'
+        
+        # Initialize storage untuk semua triwulan
+        self.bku_peralatan_data = {
+            'Triwulan 1': [],
+            'Triwulan 2': [],
+            'Triwulan 3': [],
+            'Triwulan 4': []
+        }
+        
+        print(f"Debug: Mencari realisasi BKU untuk kode rekening: {target_code}")
+        
+        # Collect all raw data first
+        raw_items = []
+        
+        # Iterasi semua baris untuk mencari kode rekening
+        for row_idx in range(1, sheet.max_row + 1):
+            # Ekstrak kode rekening dari kolom F-G (merged)
+            kode_rekening = self.excel_utils.extract_merged_text_strict(sheet, row_idx, range(6, 8))
+            
+            if not kode_rekening or target_code not in kode_rekening:
+                continue
+            
+            # Ekstrak tanggal dari kolom A-C (merged)
+            tanggal_str = self.excel_utils.extract_merged_text(sheet, row_idx, range(1, 4))
+            if not tanggal_str:
+                continue
+            
+            # Parse tanggal
+            try:
+                tanggal = self._parse_date_string(tanggal_str)
+                if not tanggal:
+                    continue
+            except:
+                continue
+            
+            # Ekstrak kode kegiatan dari kolom D-E (merged)
+            kode_kegiatan = self.excel_utils.extract_merged_text(sheet, row_idx, range(4, 6))
+            if not kode_kegiatan or not self.excel_utils.is_valid_kegiatan_format(kode_kegiatan):
+                continue
+            
+            # Ekstrak uraian dari kolom K-M (merged)
+            uraian = self.excel_utils.extract_merged_text(sheet, row_idx, range(11, 14))
+            if not uraian:
+                continue
+            
+            # Skip baris dengan kata "Terima" atau "Setor"
+            if "terima" in uraian.lower() or "setor" in uraian.lower():
+                print(f"Debug: Skipping row with Terima/Setor: {uraian}")
+                continue
+            
+            # Ekstrak jumlah pengeluaran dari kolom Q-S (merged)
+            jumlah = self.excel_utils.extract_merged_number(sheet, row_idx, range(17, 20))
+            if jumlah <= 0:
+                continue
+            
+            raw_items.append({
+                'tanggal': tanggal,
+                'kode_rekening': kode_rekening,
+                'kode_kegiatan': kode_kegiatan,
+                'uraian': uraian,
+                'jumlah': jumlah,
+                'row': row_idx
+            })
+            
+            print(f"Debug: Found BKU peralatan item - {tanggal} | {kode_rekening} | {kode_kegiatan} | {uraian} - Rp {jumlah:,}")
+        
+        # Group and sum items by date, kode_kegiatan, kode_rekening, and uraian
+        grouped_items = self._group_and_sum_bku_items(raw_items)
+        
+        # Distribute items to appropriate triwulan
+        for item in grouped_items:
+            triwulan = self._get_triwulan_from_date(item['tanggal'])
+            if triwulan:
+                # Check if triwulan is complete
+                if self._is_triwulan_complete(item['tanggal'], sheet):
+                    self.bku_peralatan_data[triwulan].append(item)
+
+    def get_bku_peralatan_by_triwulan(self, triwulan):
+        """Get data realisasi peralatan berdasarkan triwulan"""
+        if not hasattr(self, 'bku_peralatan_data'):
+            return []
+        
+        return self.bku_peralatan_data.get(triwulan, [])
+    
+    def extract_bku_aset_tetap_data(self, sheet):
+        """Ekstrak data realisasi aset tetap lainnya dari BKU untuk semua triwulan"""
+        target_codes = ['5.2.04', '5.2.05']
+        
+        # Initialize storage untuk semua triwulan
+        self.bku_aset_tetap_data = {
+            'Triwulan 1': [],
+            'Triwulan 2': [],
+            'Triwulan 3': [],
+            'Triwulan 4': []
+        }
+        
+        print(f"Debug: Mencari realisasi BKU untuk kode rekening: {target_codes}")
+        
+        # Collect all raw data first
+        raw_items = []
+        
+        # Iterasi semua baris untuk mencari kode rekening
+        for row_idx in range(1, sheet.max_row + 1):
+            # Ekstrak kode rekening dari kolom F-G (merged)
+            kode_rekening = self.excel_utils.extract_merged_text_strict(sheet, row_idx, range(6, 8))
+            
+            # Check if any target code is in kode_rekening
+            if not kode_rekening or not any(target_code in kode_rekening for target_code in target_codes):
+                continue
+            
+            # Ekstrak tanggal dari kolom A-C (merged)
+            tanggal_str = self.excel_utils.extract_merged_text(sheet, row_idx, range(1, 4))
+            if not tanggal_str:
+                continue
+            
+            # Parse tanggal
+            try:
+                tanggal = self._parse_date_string(tanggal_str)
+                if not tanggal:
+                    continue
+            except:
+                continue
+            
+            # Ekstrak kode kegiatan dari kolom D-E (merged)
+            kode_kegiatan = self.excel_utils.extract_merged_text(sheet, row_idx, range(4, 6))
+            if not kode_kegiatan or not self.excel_utils.is_valid_kegiatan_format(kode_kegiatan):
+                continue
+            
+            # Ekstrak uraian dari kolom K-M (merged)
+            uraian = self.excel_utils.extract_merged_text(sheet, row_idx, range(11, 14))
+            if not uraian:
+                continue
+            
+            # Skip baris dengan kata "Terima" atau "Setor"
+            if "terima" in uraian.lower() or "setor" in uraian.lower():
+                print(f"Debug: Skipping row with Terima/Setor: {uraian}")
+                continue
+            
+            # Ekstrak jumlah pengeluaran dari kolom Q-S (merged)
+            jumlah = self.excel_utils.extract_merged_number(sheet, row_idx, range(17, 20))
+            if jumlah <= 0:
+                continue
+            
+            raw_items.append({
+                'tanggal': tanggal,
+                'kode_rekening': kode_rekening,
+                'kode_kegiatan': kode_kegiatan,
+                'uraian': uraian,
+                'jumlah': jumlah,
+                'row': row_idx
+            })
+            
+            print(f"Debug: Found BKU aset tetap item - {tanggal} | {kode_rekening} | {kode_kegiatan} | {uraian} - Rp {jumlah:,}")
+        
+        # Group and sum items by date, kode_kegiatan, kode_rekening, and uraian
+        grouped_items = self._group_and_sum_bku_items(raw_items)
+        
+        # Distribute items to appropriate triwulan
+        for item in grouped_items:
+            triwulan = self._get_triwulan_from_date(item['tanggal'])
+            if triwulan:
+                # Check if triwulan is complete
+                if self._is_triwulan_complete(item['tanggal'], sheet):
+                    self.bku_aset_tetap_data[triwulan].append(item)
+
+    def get_bku_aset_tetap_by_triwulan(self, triwulan):
+        """Get data realisasi aset tetap lainnya berdasarkan triwulan"""
+        if not hasattr(self, 'bku_aset_tetap_data'):
+            return []
+        
+        return self.bku_aset_tetap_data.get(triwulan, [])
+
+    def extract_bku_belanja_jasa_data(self, sheet):
+        """Ekstrak data realisasi belanja jasa dari BKU untuk semua triwulan"""
+        target_code = '5.1.02.02'
+        
+        # Initialize storage untuk semua triwulan
+        self.bku_belanja_jasa_data = {
+            'Triwulan 1': [],
+            'Triwulan 2': [],
+            'Triwulan 3': [],
+            'Triwulan 4': []
+        }
+        
+        print(f"Debug: Mencari realisasi BKU untuk kode rekening: {target_code}")
+        
+        # Collect all raw data first
+        raw_items = []
+        
+        # Iterasi semua baris untuk mencari kode rekening
+        for row_idx in range(1, sheet.max_row + 1):
+            # Ekstrak kode rekening dari kolom F-G (merged)
+            kode_rekening = self.excel_utils.extract_merged_text_strict(sheet, row_idx, range(6, 8))
+            
+            if not kode_rekening or target_code not in kode_rekening:
+                continue
+            
+            # Ekstrak tanggal dari kolom A-C (merged)
+            tanggal_str = self.excel_utils.extract_merged_text(sheet, row_idx, range(1, 4))
+            if not tanggal_str:
+                continue
+            
+            # Parse tanggal
+            try:
+                tanggal = self._parse_date_string(tanggal_str)
+                if not tanggal:
+                    continue
+            except:
+                continue
+            
+            # Ekstrak kode kegiatan dari kolom D-E (merged)
+            kode_kegiatan = self.excel_utils.extract_merged_text(sheet, row_idx, range(4, 6))
+            if not kode_kegiatan or not self.excel_utils.is_valid_kegiatan_format(kode_kegiatan):
+                continue
+            
+            # Ekstrak uraian dari kolom K-M (merged)
+            uraian = self.excel_utils.extract_merged_text(sheet, row_idx, range(11, 14))
+            if not uraian:
+                continue
+            
+            # Skip baris dengan kata "Terima" atau "Setor"
+            if "terima" in uraian.lower() or "setor" in uraian.lower():
+                print(f"Debug: Skipping row with Terima/Setor: {uraian}")
+                continue
+            
+            # Ekstrak jumlah pengeluaran dari kolom Q-S (merged)
+            jumlah = self.excel_utils.extract_merged_number(sheet, row_idx, range(17, 20))
+            if jumlah <= 0:
+                continue
+            
+            raw_items.append({
+                'tanggal': tanggal,
+                'kode_rekening': kode_rekening,
+                'kode_kegiatan': kode_kegiatan,
+                'uraian': uraian,
+                'jumlah': jumlah,
+                'row': row_idx
+            })
+            
+            print(f"Debug: Found BKU jasa item - {tanggal} | {kode_rekening} | {kode_kegiatan} | {uraian} - Rp {jumlah:,}")
+        
+        # Group and sum items by date, kode_kegiatan, kode_rekening, and uraian
+        grouped_items = self._group_and_sum_bku_items(raw_items)
+        
+        # Distribute items to appropriate triwulan
+        for item in grouped_items:
+            triwulan = self._get_triwulan_from_date(item['tanggal'])
+            if triwulan:
+                # Check if triwulan is complete
+                if self._is_triwulan_complete(item['tanggal'], sheet):
+                    self.bku_belanja_jasa_data[triwulan].append(item)
+
+    def get_bku_belanja_jasa_by_triwulan(self, triwulan):
+        """Get data realisasi belanja jasa berdasarkan triwulan"""
+        if not hasattr(self, 'bku_belanja_jasa_data'):
+            return []
+        
+        return self.bku_belanja_jasa_data.get(triwulan, [])
 
     def _parse_date_string(self, date_str):
         """Parse tanggal dari string dengan format DD-MM-YYYY"""
@@ -574,3 +1045,71 @@ class BOSDataProcessor:
             'belanja_modal': belanja_modal,
             'total_anggaran': total_anggaran
         }
+
+    def get_bku_summary_data_by_triwulan(self, triwulan):
+        """Generate summary data BKU untuk triwulan tertentu - mirip dengan get_summary_data()"""
+        if not self.bku_data_available:
+            return None
+        
+        # Ambil data realisasi untuk semua kategori berdasarkan triwulan
+        bku_persediaan = self.get_bku_belanja_persediaan_by_triwulan(triwulan)
+        bku_jasa = self.get_bku_belanja_jasa_by_triwulan(triwulan)  
+        bku_pemeliharaan = self.get_bku_belanja_pemeliharaan_by_triwulan(triwulan)
+        bku_perjalanan = self.get_bku_belanja_perjalanan_by_triwulan(triwulan)
+        bku_peralatan = self.get_bku_peralatan_by_triwulan(triwulan)
+        bku_aset_tetap = self.get_bku_aset_tetap_by_triwulan(triwulan)
+        
+        # Hitung total untuk setiap kategori
+        total_persediaan_bku = sum(item['jumlah'] for item in bku_persediaan)
+        total_jasa_bku = sum(item['jumlah'] for item in bku_jasa)
+        total_pemeliharaan_bku = sum(item['jumlah'] for item in bku_pemeliharaan)
+        total_perjalanan_bku = sum(item['jumlah'] for item in bku_perjalanan)
+        total_peralatan_bku = sum(item['jumlah'] for item in bku_peralatan)
+        total_aset_tetap_bku = sum(item['jumlah'] for item in bku_aset_tetap)
+        
+        # Hitung honor dari jasa (berdasarkan kode kegiatan 07.12)
+        total_honor_bku = 0
+        for item in bku_jasa:
+            if item['kode_kegiatan'].startswith('07.12'):
+                total_honor_bku += item['jumlah']
+        
+        # Hitung jasa sesungguhnya
+        jasa_sesungguhnya_bku = total_jasa_bku - total_honor_bku
+        
+        # Hitung total belanja operasi
+        total_belanja_operasi_bku = (total_honor_bku + jasa_sesungguhnya_bku + 
+                                    total_pemeliharaan_bku + total_perjalanan_bku + 
+                                    total_persediaan_bku)
+        
+        # Hitung belanja modal
+        belanja_modal_bku = total_peralatan_bku + total_aset_tetap_bku
+        
+        # Total realisasi keseluruhan
+        total_realisasi = total_belanja_operasi_bku + belanja_modal_bku
+        
+        return {
+            'triwulan': triwulan,
+            'total_honor_bku': total_honor_bku,
+            'jasa_sesungguhnya_bku': jasa_sesungguhnya_bku,
+            'total_pemeliharaan_bku': total_pemeliharaan_bku,
+            'total_perjalanan_bku': total_perjalanan_bku,
+            'total_persediaan_bku': total_persediaan_bku,
+            'total_belanja_operasi_bku': total_belanja_operasi_bku,
+            'total_peralatan_bku': total_peralatan_bku,
+            'total_aset_tetap_bku': total_aset_tetap_bku,
+            'belanja_modal_bku': belanja_modal_bku,
+            'total_realisasi': total_realisasi
+        }
+
+    def get_all_triwulan_summary(self):
+        """Get ringkasan untuk semua triwulan sekaligus"""
+        if not self.bku_data_available:
+            return {}
+        
+        all_summary = {}
+        for triwulan in ['Triwulan 1', 'Triwulan 2', 'Triwulan 3', 'Triwulan 4']:
+            summary = self.get_bku_summary_data_by_triwulan(triwulan)
+            if summary:
+                all_summary[triwulan] = summary
+        
+        return all_summary

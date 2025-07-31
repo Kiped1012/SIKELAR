@@ -3,7 +3,8 @@ Main GUI application for SIKELAR
 Handles user interface and interactions with enhanced scrolling
 Modified to support split canvas layout for RKAS and BKU realisasi
 Added dropdown for Triwulan selection in BKU section
-Updated with aligned layout and auto BKU display for Belanja Persediaan
+Updated with aligned layout and auto BKU display for Belanja Persediaan and Pemeliharaan
+Added RKAS placeholder functionality
 """
 
 import tkinter as tk
@@ -202,6 +203,33 @@ class BOSBudgetAnalyzer:
         self.rkas_canvas.bind("<MouseWheel>", self._on_rkas_mousewheel)
         self.rkas_canvas.bind("<Button-4>", self._on_rkas_mousewheel)
         self.rkas_canvas.bind("<Button-5>", self._on_rkas_mousewheel)
+        
+        # Create initial RKAS placeholder
+        self._create_rkas_placeholder()
+
+    def _create_rkas_placeholder(self):
+        """Create placeholder content for RKAS section"""
+        # Check if RKAS data is available
+        if hasattr(self.processor, 'excel_data') and self.processor.excel_data:
+            # If data is available but no specific category is selected
+            instruction_label = tk.Label(self.rkas_frame, 
+                                    text="Pilih kategori anggaran\nuntuk melihat data RKAS", 
+                                    font=('Arial', 14, 'bold'), 
+                                    fg='#2c3e50', bg='#ffffff', pady=30)
+            instruction_label.pack(expand=True)
+            
+            detail_label = tk.Label(self.rkas_frame, 
+                                text="Data RKAS tersedia.\nKlik salah satu tombol kategori di atas.", 
+                                font=('Arial', 12), 
+                                fg='#7f8c8d', bg='#ffffff')
+            detail_label.pack(pady=10)
+        else:
+            # Original placeholder when no RKAS data
+            placeholder_label = tk.Label(self.rkas_frame, 
+                                    text="Fitur RKAS\n(Upload File Terlebih Dahulu, Lalu Pilih Kategori)", 
+                                    font=('Arial', 16, 'italic'), 
+                                    fg='#7f8c8d', bg='#ffffff', pady=50)
+            placeholder_label.pack(expand=True)
 
     def _create_bku_section(self):
         """Create BKU Realisasi section on the right with Triwulan dropdown"""
@@ -259,34 +287,65 @@ class BOSBudgetAnalyzer:
         self._create_bku_placeholder()
 
     def _create_bku_placeholder(self):
-        """Create placeholder content for BKU section - UPDATED"""
+        """Create placeholder content for BKU section - Updated"""
         # Check if BKU data is available
         if hasattr(self.processor, 'bku_data_available') and self.processor.bku_data_available:
-            # Show instruction to select triwulan
-            instruction_label = tk.Label(self.bku_frame, 
-                                    text="Pilih Triwulan untuk melihat\ndata realisasi BKU", 
-                                    font=('Arial', 14, 'bold'), 
-                                    fg='#2c3e50', bg='#ffffff', pady=30)
-            instruction_label.pack(expand=True)
-            
-            detail_label = tk.Label(self.bku_frame, 
-                                text="Data BKU tersedia.\nGunakan dropdown di atas untuk memilih periode.", 
-                                font=('Arial', 12), 
-                                fg='#7f8c8d', bg='#ffffff')
-            detail_label.pack(pady=10)
+            # Check if current active tab supports BKU display
+            current_tab = self.active_tab or "Belanja Persediaan"
+            if current_tab in ["Belanja Persediaan", "Pemeliharaan", "Perjalanan Dinas", "Peralatan", "Aset Tetap", "Jasa"]:
+                # Show instruction to select triwulan
+                instruction_label = tk.Label(self.bku_frame, 
+                                        text="Pilih Triwulan untuk melihat\ndata realisasi BKU", 
+                                        font=('Arial', 14, 'bold'), 
+                                        fg='#2c3e50', bg='#ffffff', pady=30)
+                instruction_label.pack(expand=True)
+                
+                detail_label = tk.Label(self.bku_frame, 
+                                    text="Data BKU tersedia.\nGunakan dropdown di atas untuk memilih periode.", 
+                                    font=('Arial', 12), 
+                                    fg='#7f8c8d', bg='#ffffff')
+                detail_label.pack(pady=10)
+            else:
+                # Show message for non-supported categories
+                placeholder_label = tk.Label(self.bku_frame, 
+                                        text="Fitur Realisasi BKU\nTidak tersedia untuk kategori ini", 
+                                        font=('Arial', 14, 'italic'), 
+                                        fg='#7f8c8d', bg='#ffffff', pady=50)
+                placeholder_label.pack(expand=True)
         else:
             # Original placeholder when no BKU data
             placeholder_label = tk.Label(self.bku_frame, 
-                                    text="Fitur Realisasi BKU\n(Belum ada data BKU atau file belum diupload)", 
+                                    text="Fitur Realisasi BKU\n(Upload File Terlebih Dahulu, Lalu Pilih Kategori)", 
                                     font=('Arial', 16, 'italic'), 
                                     fg='#7f8c8d', bg='#ffffff', pady=50)
             placeholder_label.pack(expand=True)
 
     def on_triwulan_changed(self, event=None):
-        """Handle triwulan dropdown selection change - UPDATED IMPLEMENTATION"""
+        """Handle triwulan dropdown selection change - UPDATED untuk include ringkasan"""
         selected = self.selected_triwulan.get()
         print(f"Triwulan dipilih: {selected}")
         
+        # Check if we're currently on Ringkasan tab
+        if self.active_tab == "Ringkasan":
+            # Update BKU summary display
+            if hasattr(self.processor, 'bku_data_available') and self.processor.bku_data_available:
+                self._display_bku_summary_for_triwulan(selected)
+            return
+        
+        # Existing code for other categories
+        if self.active_tab in ["Belanja Persediaan", "Pemeliharaan", "Perjalanan Dinas", "Peralatan", "Aset Tetap", "Jasa"]:
+            category_map = {
+                "Belanja Persediaan": "Belanja Persediaan",
+                "Pemeliharaan": "Pemeliharaan",
+                "Perjalanan Dinas": "Perjalanan Dinas", 
+                "Peralatan": "Peralatan",
+                "Aset Tetap": "Aset Tetap",
+                "Jasa": "Jasa"
+            }
+            self._display_bku_for_category(category_map[self.active_tab])
+
+    def _display_bku_for_category(self, category):
+        """Display BKU data for specific category with appropriate summary format"""
         # Clear current BKU content
         for widget in self.bku_frame.winfo_children():
             widget.destroy()
@@ -299,26 +358,79 @@ class BOSBudgetAnalyzer:
             self._create_bku_placeholder()
             return
         
-        # Get data for selected triwulan
-        bku_data = self.processor.get_bku_belanja_persediaan_by_triwulan(selected)
+        # Set default triwulan and get data
+        selected_triwulan = self.selected_triwulan.get()
         
-        if not bku_data:
-            # No data for selected triwulan
-            no_data_label = tk.Label(self.bku_frame, 
-                                text=f"Tidak ada data realisasi\nbelanja persediaan untuk {selected}", 
-                                font=('Arial', 14, 'bold'), 
-                                fg='#e74c3c', bg='#ffffff', pady=30)
-            no_data_label.pack(expand=True)
-            
-            # Check if triwulan is incomplete
-            self._show_triwulan_status(selected)
+        # Get BKU data based on category dan panggil method yang sesuai
+        if category == "Jasa":
+            bku_data = self.processor.get_bku_belanja_jasa_by_triwulan(selected_triwulan)
+            title = f"Realisasi Belanja Jasa (5.1.02.02) - {selected_triwulan}"
+            if bku_data:
+                # KHUSUS JASA - gunakan method dengan breakdown honor
+                self._display_bku_jasa_data(selected_triwulan, bku_data, title)
+            else:
+                # No data handling
+                no_data_label = tk.Label(self.bku_frame, 
+                                    text=f"Tidak ada data realisasi\nuntuk {selected_triwulan}", 
+                                    font=('Arial', 14, 'bold'), 
+                                    fg='#e74c3c', bg='#ffffff', pady=30)
+                no_data_label.pack(expand=True)
+                self._show_triwulan_status(selected_triwulan)
+        elif category == "Belanja Persediaan":
+            bku_data = self.processor.get_bku_belanja_persediaan_by_triwulan(selected_triwulan)
+            title = f"Realisasi Belanja Persediaan (5.1.02.01) - {selected_triwulan}"
+            if bku_data:
+                # KATEGORI LAIN - gunakan method generic tanpa breakdown honor
+                self._display_bku_data_generic(selected_triwulan, bku_data, title)
+            else:
+                self._handle_no_bku_data(selected_triwulan)
+        elif category == "Pemeliharaan":
+            bku_data = self.processor.get_bku_belanja_pemeliharaan_by_triwulan(selected_triwulan)
+            title = f"Realisasi Belanja Pemeliharaan (5.1.02.03) - {selected_triwulan}"
+            if bku_data:
+                self._display_bku_data_generic(selected_triwulan, bku_data, title)
+            else:
+                self._handle_no_bku_data(selected_triwulan)
+        elif category == "Perjalanan Dinas":
+            bku_data = self.processor.get_bku_belanja_perjalanan_by_triwulan(selected_triwulan)
+            title = f"Realisasi Belanja Perjalanan Dinas (5.1.02.04) - {selected_triwulan}"
+            if bku_data:
+                self._display_bku_data_generic(selected_triwulan, bku_data, title)
+            else:
+                self._handle_no_bku_data(selected_triwulan)
+        elif category == "Peralatan":
+            bku_data = self.processor.get_bku_peralatan_by_triwulan(selected_triwulan)
+            title = f"Realisasi Peralatan dan Mesin (5.2.02) - {selected_triwulan}"
+            if bku_data:
+                self._display_bku_data_generic(selected_triwulan, bku_data, title)
+            else:
+                self._handle_no_bku_data(selected_triwulan)
+        elif category == "Aset Tetap":
+            bku_data = self.processor.get_bku_aset_tetap_by_triwulan(selected_triwulan)
+            title = f"Realisasi Aset Tetap Lainnya (5.2.04 & 5.2.05) - {selected_triwulan}"
+            if bku_data:
+                self._display_bku_data_generic(selected_triwulan, bku_data, title)
+            else:
+                self._handle_no_bku_data(selected_triwulan)
         else:
-            # Display BKU data in table format
-            self._display_bku_data(selected, bku_data)
+            # For other categories, show placeholder
+            self._create_bku_placeholder()
+            return
         
         # Update canvas scroll region
         self.bku_frame.update_idletasks()
         self.bku_canvas.configure(scrollregion=self.bku_canvas.bbox("all"))
+
+    def _handle_no_bku_data(self, selected_triwulan):
+        """Handle case when no BKU data is available for selected triwulan"""
+        no_data_label = tk.Label(self.bku_frame, 
+                            text=f"Tidak ada data realisasi\nuntuk {selected_triwulan}", 
+                            font=('Arial', 14, 'bold'), 
+                            fg='#e74c3c', bg='#ffffff', pady=30)
+        no_data_label.pack(expand=True)
+        
+        # Show triwulan status
+        self._show_triwulan_status(selected_triwulan)
 
     # RKAS Canvas Event Handlers
     def _on_rkas_frame_configure(self, event):
@@ -369,6 +481,9 @@ class BOSBudgetAnalyzer:
                 # Disable upload button after successful upload
                 self.upload_btn.config(state='disabled')
 
+                # Update RKAS placeholder to show available data
+                self._update_rkas_placeholder_after_upload()
+
                 # Update BKU placeholder to show available data
                 self._create_bku_placeholder()
 
@@ -391,7 +506,7 @@ class BOSBudgetAnalyzer:
                 messagebox.showinfo("Berhasil", 
                     f"File Excel berhasil diproses!\n"
                     f"Sheet RKAS: Berhasil diproses\n"
-                    f"Sheet BKU: {bku_status}\n\n"
+                    f"Sheet BKU: Berhasil diproses\n"
                     f"Total Penerimaan: {FormatUtils.format_currency(self.processor.total_penerimaan)}\n"
                     f"Ditemukan {len(self.processor.belanja_persediaan_items)} item belanja persediaan\n"
                     f"Ditemukan {len(self.processor.belanja_jasa_items)} item belanja jasa\n"
@@ -401,14 +516,33 @@ class BOSBudgetAnalyzer:
                     f"Ditemukan {len(self.processor.aset_tetap_items)} item aset tetap lainnya")
             except Exception as e:
                 messagebox.showerror("Error", f"Gagal membaca file Excel: {str(e)}")
+
+    def _update_rkas_placeholder_after_upload(self):
+        """Update RKAS placeholder after successful file upload"""
+        # Clear current RKAS content
+        for widget in self.rkas_frame.winfo_children():
+            widget.destroy()
+        
+        # Reset RKAS canvas scroll position to top
+        self.rkas_canvas.yview_moveto(0)
+        
+        # Create updated placeholder
+        self._create_rkas_placeholder()
+        
+        # Update canvas scroll region
+        self.rkas_frame.update_idletasks()
+        self.rkas_canvas.configure(scrollregion=self.rkas_canvas.bbox("all"))
     
     def reset_data(self):
         """Reset all data and UI - UPDATED"""
         self.processor.reset_data()
 
-        # Clear RKAS display
+        # Clear RKAS display and recreate placeholder
         for widget in self.rkas_frame.winfo_children():
             widget.destroy()
+        
+        # Re-add RKAS placeholder
+        self._create_rkas_placeholder()
 
         # Clear BKU display and recreate placeholder
         for widget in self.bku_frame.winfo_children():
@@ -429,6 +563,13 @@ class BOSBudgetAnalyzer:
 
         # Re-enable upload button
         self.upload_btn.config(state='normal')
+
+        # Reset active tab
+        self.active_tab = None
+        
+        # Reset button highlights
+        for tab_name, (btn, orig_color) in self.tab_buttons.items():
+            btn.config(bg=orig_color)
 
         messagebox.showinfo("Reset", "Data berhasil dibersihkan.")
 
@@ -484,14 +625,14 @@ class BOSBudgetAnalyzer:
         self.rkas_frame.update_idletasks()
         self.rkas_canvas.configure(scrollregion=self.rkas_canvas.bbox("all"))
 
-    def _display_bku_data(self, triwulan, data):
-        """Display BKU realisasi data in table format with aligned positioning"""
-        # FIXED: Add consistent title frame for alignment
+    def _display_bku_data_generic(self, triwulan, data, title):
+        """Display BKU realisasi data in table format - TANPA BREAKDOWN HONOR untuk kategori selain Jasa"""
+        # Title frame
         title_frame = tk.Frame(self.bku_frame, bg='#ffffff')
-        title_frame.pack(fill='x', pady=(20, 10))  # Consistent with RKAS
+        title_frame.pack(fill='x', pady=(20, 10))
         
         title_label = tk.Label(title_frame, 
-                            text=f"Realisasi Belanja Persediaan (5.1.02.01) - {triwulan}", 
+                            text=title, 
                             font=('Arial', 14, 'bold'), 
                             bg='#ffffff', fg='#2c3e50')
         title_label.pack()
@@ -504,18 +645,17 @@ class BOSBudgetAnalyzer:
         columns = ('Tanggal', 'Kode Rekening', 'Kode Kegiatan', 'Uraian', 'Jumlah (Rp)')
         tree = ttk.Treeview(table_frame, columns=columns, show='headings', height=15)
         
-        # Configure column headings
+        # Configure column headings and widths
         for col in columns:
             tree.heading(col, text=col)
         
-        # Configure column widths for BKU display
         tree.column('Tanggal', width=80, anchor='center')
         tree.column('Kode Rekening', width=100, anchor='center')
         tree.column('Kode Kegiatan', width=80, anchor='center')
         tree.column('Uraian', width=250, anchor='w')
-        tree.column('Jumlah (Rp)', width=120, anchor='e')
+        tree.column('Jumlah (Rp)', width=120, anchor='w')
         
-        # Insert data
+        # Insert data - TANPA LOGIK HONOR untuk kategori selain Jasa
         total_realisasi = 0
         for item in data:
             formatted_tanggal = item['tanggal'].strftime('%d-%m-%Y')
@@ -536,11 +676,11 @@ class BOSBudgetAnalyzer:
         tree.pack(side='left', fill='both', expand=True)
         scrollbar.pack(side='right', fill='y')
         
-        # Summary section
+        # Summary section - SIMPLE SUMMARY untuk kategori selain Jasa
         summary_frame = tk.Frame(self.bku_frame, bg='#ecf0f1', relief='raised', bd=1)
         summary_frame.pack(fill='x', padx=10, pady=10)
         
-        # Total realisasi
+        # Total realisasi saja - TANPA BREAKDOWN
         total_label = tk.Label(summary_frame, 
                             text=f"Total Realisasi {triwulan}: {FormatUtils.format_currency(total_realisasi)}", 
                             font=('Arial', 12, 'bold'), bg='#ecf0f1', fg='#27ae60')
@@ -551,6 +691,7 @@ class BOSBudgetAnalyzer:
                             text=f"SEKOLAH {self.processor.nama_sekolah}", 
                             font=('Arial', 10, 'bold'), bg='#ecf0f1', fg='#2c3e50')
         school_label.pack(anchor='w', pady=(10, 5))
+
 
     def _show_triwulan_status(self, triwulan):
         """Show status information for triwulan"""
@@ -567,7 +708,7 @@ class BOSBudgetAnalyzer:
             months = "Tidak dikenal"
         
         info_label = tk.Label(self.bku_frame, 
-                            text=f"Periode: {months}\n\nKemungkinan penyebab:\n• Data {triwulan} belum lengkap\n• Bulan terakhir periode belum ada data\n• Kode rekening 5.1.02.01 tidak ditemukan", 
+                            text=f"Periode: {months}\n\nKemungkinan penyebab:\n• Data {triwulan} belum lengkap\n• Bulan terakhir periode belum ada data\n• Kode rekening tidak ditemukan", 
                             font=('Arial', 11), 
                             fg='#7f8c8d', bg='#ffffff',
                             justify='left')
@@ -596,10 +737,10 @@ class BOSBudgetAnalyzer:
         self._create_consistent_summary(total_label, total_jumlah)
 
     def _create_consistent_summary(self, total_label: str, total_jumlah: int):
-        """Create consistent summary section with center total and left school name"""
+        """Create consistent summary section with center total and left school name - TANPA BREAKDOWN HONOR"""
         # Main total label at center
         self.total_label = tk.Label(self.summary_frame, text=f"{total_label}: {FormatUtils.format_currency(total_jumlah)}", 
-                                   font=('Arial', 12, 'bold'), bg='#ecf0f1', fg='#27ae60')
+                                font=('Arial', 12, 'bold'), bg='#ecf0f1', fg='#27ae60')
         self.total_label.pack(pady=5)
         
         # School name label at bottom left
@@ -609,7 +750,7 @@ class BOSBudgetAnalyzer:
         self.sekolah_label.pack(anchor='w', pady=(10, 5))
 
     def display_belanja_jasa_results(self, items: List[Dict]):
-        """Display belanja jasa results with extended summary"""
+        """Display belanja jasa results with extended summary including honor breakdown"""
         columns = ('Kode Rekening', 'Kode Kegiatan', 'Uraian', 'Jumlah (Rp)')
         self.create_standard_table("Rincian Belanja Jasa (5.1.02.02)", columns)
         
@@ -627,23 +768,23 @@ class BOSBudgetAnalyzer:
         else:
             self.tree.insert('', 'end', values=('', '', 'Tidak ada data ditemukan untuk kategori ini', 'Rp 0'))
         
-        # Calculate honor and actual service
+        # Calculate honor and actual service - KHUSUS UNTUK JASA
         honor_items = self.processor.filter_budget_by_codes(self.processor.kategori_kode['honor'])
         total_honor = sum(item['jumlah'] for item in honor_items)
         jasa_sesungguhnya = total_belanja_jasa - total_honor
         
-        # Create extended summary
-        self.total_label = tk.Label(self.summary_frame, text=f"Total Belanja Jasa: {FormatUtils.format_currency(total_belanja_jasa)}", 
-                                   font=('Arial', 12, 'bold'), bg='#ecf0f1')
+        # Create extended summary dengan data honor breakdown - HANYA UNTUK JASA
+        self.total_label = tk.Label(self.summary_frame, text=f"Total Belanja Jasa (RKAS): {FormatUtils.format_currency(total_belanja_jasa)}", 
+                                font=('Arial', 12, 'bold'), bg='#ecf0f1')
         self.total_label.pack(pady=5)
         
         self.honor_label = tk.Label(self.summary_frame, 
-                                text=f"Pembayaran Honor: {FormatUtils.format_currency(total_honor)}", 
+                                text=f"Pembayaran Honor (RKAS): {FormatUtils.format_currency(total_honor)}", 
                                 font=('Arial', 12, 'bold'), bg='#ecf0f1')
         self.honor_label.pack(pady=5)
         
         self.jasa_sesungguhnya_label = tk.Label(self.summary_frame, 
-                                            text=f"Jasa Sesungguhnya: {FormatUtils.format_currency(jasa_sesungguhnya)}", 
+                                            text=f"Jasa Sesungguhnya (RKAS): {FormatUtils.format_currency(jasa_sesungguhnya)}", 
                                             font=('Arial', 12, 'bold'), bg='#ecf0f1', fg='#27ae60')
         self.jasa_sesungguhnya_label.pack(pady=5)
         
@@ -652,8 +793,196 @@ class BOSBudgetAnalyzer:
                                     font=('Arial', 10, 'bold'), bg='#ecf0f1', fg='#2c3e50')
         self.sekolah_label.pack(anchor='w', pady=(10, 5))
 
-    # Navigation methods - UPDATED with auto BKU display for Belanja Persediaan
+    def _display_bku_jasa_data(self, triwulan, data, title):
+        """Display BKU jasa data dengan summary yang menghitung honor dan jasa sesungguhnya - KHUSUS JASA"""
+        # Title frame
+        title_frame = tk.Frame(self.bku_frame, bg='#ffffff')
+        title_frame.pack(fill='x', pady=(20, 10))
+        
+        title_label = tk.Label(title_frame, 
+                            text=title, 
+                            font=('Arial', 14, 'bold'), 
+                            bg='#ffffff', fg='#2c3e50')
+        title_label.pack()
+        
+        # Create table frame
+        table_frame = tk.Frame(self.bku_frame, bg='#ffffff')
+        table_frame.pack(fill='both', expand=True, padx=10, pady=10)
+        
+        # Create treeview for BKU data
+        columns = ('Tanggal', 'Kode Rekening', 'Kode Kegiatan', 'Uraian', 'Jumlah (Rp)')
+        tree = ttk.Treeview(table_frame, columns=columns, show='headings', height=15)
+        
+        # Configure column headings and widths
+        for col in columns:
+            tree.heading(col, text=col)
+        
+        tree.column('Tanggal', width=80, anchor='center')
+        tree.column('Kode Rekening', width=100, anchor='center')
+        tree.column('Kode Kegiatan', width=80, anchor='center')
+        tree.column('Uraian', width=250, anchor='w')
+        tree.column('Jumlah (Rp)', width=120, anchor='w')
+        
+        # Insert data dan hitung honor vs jasa sesungguhnya - LOGIK KHUSUS JASA
+        total_realisasi = 0
+        total_honor_bku = 0
+        
+        for item in data:
+            formatted_tanggal = item['tanggal'].strftime('%d-%m-%Y')
+            formatted_jumlah = FormatUtils.format_currency(item['jumlah'])
+            
+            tree.insert('', 'end', values=(
+                formatted_tanggal,
+                item['kode_rekening'],
+                item['kode_kegiatan'],
+                item['uraian'],
+                formatted_jumlah
+            ))
+            
+            total_realisasi += item['jumlah']
+            
+            # Hitung honor berdasarkan kode kegiatan yang dimulai dengan 07.12 - KHUSUS JASA
+            if item['kode_kegiatan'].startswith('07.12'):
+                total_honor_bku += item['jumlah']
+        
+        # Add scrollbar
+        scrollbar = ttk.Scrollbar(table_frame, orient='vertical', command=tree.yview)
+        tree.configure(yscrollcommand=scrollbar.set)
+        tree.pack(side='left', fill='both', expand=True)
+        scrollbar.pack(side='right', fill='y')
+        
+        # Summary section dengan breakdown honor dan jasa sesungguhnya - KHUSUS JASA
+        summary_frame = tk.Frame(self.bku_frame, bg='#ecf0f1', relief='raised', bd=1)
+        summary_frame.pack(fill='x', padx=10, pady=10)
+        
+        # Total realisasi
+        total_label = tk.Label(summary_frame, 
+                            text=f"Total Realisasi {triwulan}: {FormatUtils.format_currency(total_realisasi)}", 
+                            font=('Arial', 12, 'bold'), bg='#ecf0f1')
+        total_label.pack(pady=5)
+        
+        # Honor realisasi - KHUSUS JASA
+        honor_bku_label = tk.Label(summary_frame, 
+                                text=f"Pembayaran Honor (Realisasi): {FormatUtils.format_currency(total_honor_bku)}", 
+                                font=('Arial', 12, 'bold'), bg='#ecf0f1')
+        honor_bku_label.pack(pady=5)
+        
+        # Jasa sesungguhnya realisasi - KHUSUS JASA
+        jasa_sesungguhnya_bku = total_realisasi - total_honor_bku
+        jasa_bku_label = tk.Label(summary_frame, 
+                                text=f"Jasa Sesungguhnya (Realisasi): {FormatUtils.format_currency(jasa_sesungguhnya_bku)}", 
+                                font=('Arial', 12, 'bold'), bg='#ecf0f1', fg='#27ae60')
+        jasa_bku_label.pack(pady=5)
+        
+        # School name
+        school_label = tk.Label(summary_frame, 
+                            text=f"SEKOLAH {self.processor.nama_sekolah}", 
+                            font=('Arial', 10, 'bold'), bg='#ecf0f1', fg='#2c3e50')
+        school_label.pack(anchor='w', pady=(10, 5))
+
+    def _display_bku_summary_for_triwulan(self, triwulan):
+        """Display BKU summary data untuk triwulan tertentu"""
+        # Clear current BKU content
+        for widget in self.bku_frame.winfo_children():
+            widget.destroy()
+            
+        # Reset BKU canvas scroll position to top
+        self.bku_canvas.yview_moveto(0)
+        
+        # Check if BKU data is available
+        if not hasattr(self.processor, 'bku_data_available') or not self.processor.bku_data_available:
+            self._create_bku_placeholder()
+            return
+        
+        # Get BKU summary data
+        summary_data = self.processor.get_bku_summary_data_by_triwulan(triwulan)
+        
+        if not summary_data or summary_data['total_realisasi'] == 0:
+            # No data for this triwulan
+            no_data_label = tk.Label(self.bku_frame, 
+                                text=f"Tidak ada data realisasi\nuntuk {triwulan}", 
+                                font=('Arial', 14, 'bold'), 
+                                fg='#e74c3c', bg='#ffffff', pady=30)
+            no_data_label.pack(expand=True)
+            
+            self._show_triwulan_status(triwulan)
+            return
+        
+        # Title frame
+        title_frame = tk.Frame(self.bku_frame, bg='#ffffff')
+        title_frame.pack(fill='x', pady=(20, 10))
+        
+        title_label = tk.Label(title_frame, 
+                            text=f"Ringkasan Realisasi BKU - {triwulan}", 
+                            font=('Arial', 14, 'bold'), 
+                            bg='#ffffff', fg='#2c3e50')
+        title_label.pack()
+        
+        # Create table frame
+        table_frame = tk.Frame(self.bku_frame, bg='#ffffff')
+        table_frame.pack(fill='both', expand=True, padx=10, pady=10)
+        
+        # Create treeview for summary
+        columns = ('Kategori', 'Jumlah (Rp)')
+        tree = ttk.Treeview(table_frame, columns=columns, show='headings', height=15)
+        
+        # Configure column headings and widths
+        for col in columns:
+            tree.heading(col, text=col)
+        
+        tree.column('Kategori', width=320, anchor='w')
+        tree.column('Jumlah (Rp)', width=160, anchor='w')
+        
+        # Data ringkasan BKU dengan background color info (mirip dengan RKAS)
+        ringkasan_data = [
+            ("BELANJA OPERASI", summary_data['total_belanja_operasi_bku'], True),
+            ("  BELANJA HONOR", summary_data['total_honor_bku'], False),
+            ("  BELANJA JASA", summary_data['jasa_sesungguhnya_bku'], False),
+            ("  BELANJA PEMELIHARAAN", summary_data['total_pemeliharaan_bku'], False),
+            ("  BELANJA PERJALANAN", summary_data['total_perjalanan_bku'], False),
+            ("  BELANJA PERSEDIAAN", summary_data['total_persediaan_bku'], False),
+            ("BELANJA MODAL", summary_data['belanja_modal_bku'], True),
+            ("  PERALATAN DAN MESIN", summary_data['total_peralatan_bku'], False),
+            ("  ASET TETAP LAINNYA", summary_data['total_aset_tetap_bku'], False),
+            ("TOTAL REALISASI", summary_data['total_realisasi'], True)
+        ]
+        
+        # Insert data into table
+        for kategori, jumlah, is_highlight in ringkasan_data:
+            formatted_jumlah = FormatUtils.format_currency(jumlah)
+            item_id = tree.insert('', 'end', values=(kategori, formatted_jumlah))
+            
+            # Set background color for highlighted items
+            if is_highlight:
+                tree.set(item_id, 'Kategori', kategori)
+                tree.set(item_id, 'Jumlah (Rp)', formatted_jumlah)
+                # Configure tag for green background
+                tree.tag_configure('highlight', background='#e74c3c', foreground='white')  # Red theme for BKU
+                tree.item(item_id, tags=('highlight',))
+        
+        # Add scrollbar
+        scrollbar = ttk.Scrollbar(table_frame, orient='vertical', command=tree.yview)
+        tree.configure(yscrollcommand=scrollbar.set)
+        tree.pack(side='left', fill='both', expand=True)
+        scrollbar.pack(side='right', fill='y')
+        
+        # Summary section
+        summary_frame = tk.Frame(self.bku_frame, bg='#ecf0f1', relief='raised', bd=1)
+        summary_frame.pack(fill='x', padx=10, pady=10)
+        
+        # School name
+        school_label = tk.Label(summary_frame, 
+                            text=f"SEKOLAH {self.processor.nama_sekolah}", 
+                            font=('Arial', 10, 'bold'), bg='#ecf0f1', fg='#2c3e50')
+        school_label.pack(anchor='w', pady=(10, 5))
+        
+        # Update canvas scroll region
+        self.bku_frame.update_idletasks()
+        self.bku_canvas.configure(scrollregion=self.bku_canvas.bbox("all"))
+
+    # Navigation methods - UPDATED with auto BKU display for supported categories
     def show_belanja_persediaan(self):
+        """Show both RKAS and BKU data for Belanja Persediaan"""
         if not self.processor.belanja_persediaan_items:
             messagebox.showwarning("Peringatan", "Data dalam kategori tersebut tidak ada atau file belum diupload!")
             return
@@ -663,55 +992,63 @@ class BOSBudgetAnalyzer:
                                     "Rincian Belanja Persediaan (5.1.02.01)", 
                                     "Total Belanja Persediaan")
         
-        # AUTO-DISPLAY BKU DATA for Triwulan 1
-        if hasattr(self.processor, 'bku_data_available') and self.processor.bku_data_available:
-            # Set dropdown to Triwulan 1 and trigger display
-            self.selected_triwulan.set("Triwulan 1")
-            self.on_triwulan_changed()
+        # AUTO-DISPLAY BKU DATA
+        self._display_bku_for_category("Belanja Persediaan")
 
     def show_belanja_jasa(self):
+        """Show RKAS data for Belanja Jasa"""
         if not self.processor.belanja_jasa_items:
             messagebox.showwarning("Peringatan", "Data dalam kategori tersebut tidak ada atau file belum diupload!")
             return
         self.display_belanja_jasa_results(self.processor.belanja_jasa_items)
         
-        # Clear BKU section for non-persediaan categories
-        self._clear_bku_for_non_persediaan()
+        # Clear BKU section for non-supported categories
+        self._display_bku_for_category("Jasa")
 
     def show_belanja_pemeliharaan(self):
+        """Show both RKAS and BKU data for Belanja Pemeliharaan"""
         if not self.processor.belanja_pemeliharaan_items:
             messagebox.showwarning("Peringatan", "Data dalam kategori tersebut tidak ada atau file belum diupload!")
             return
+        
+        # Display RKAS data
         self.display_standard_results(self.processor.belanja_pemeliharaan_items,
                                     "Rincian Belanja Pemeliharaan (5.1.02.03)",
                                     "Total Belanja Pemeliharaan")
         
-        # Clear BKU section for non-persediaan categories
-        self._clear_bku_for_non_persediaan()
+        # AUTO-DISPLAY BKU DATA
+        self._display_bku_for_category("Pemeliharaan")
 
     def show_belanja_perjalanan(self):
+        """Show both RKAS and BKU data for Belanja Perjalanan"""
         if not self.processor.belanja_perjalanan_items:
             messagebox.showwarning("Peringatan", "Data dalam kategori tersebut tidak ada atau file belum diupload!")
             return
+        
+        # Display RKAS data
         self.display_standard_results(self.processor.belanja_perjalanan_items,
                                     "Rincian Perjalanan Dinas (5.1.02.04)",
                                     "Total Belanja Perjalanan Dinas")
         
-        # Clear BKU section for non-persediaan categories
-        self._clear_bku_for_non_persediaan()
+        # AUTO-DISPLAY BKU DATA
+        self._display_bku_for_category("Perjalanan Dinas")
 
     def show_peralatan(self):
+        """Show both RKAS and BKU data for Peralatan"""
         if not self.processor.peralatan_items:
             messagebox.showwarning("Peringatan", "Data dalam kategori tersebut tidak ada atau file belum diupload!")
             return
+        
+        # Display RKAS data
         self.display_standard_results(self.processor.peralatan_items,
                                     "Rincian Peralatan dan Mesin (5.2.02)",
                                     "Total Peralatan")
         
-        # Clear BKU section for non-persediaan categories
-        self._clear_bku_for_non_persediaan()
+        # AUTO-DISPLAY BKU DATA
+        self._display_bku_for_category("Peralatan")
 
     def show_aset_tetap(self):
+        """Show RKAS data for Aset Tetap"""
         if not self.processor.aset_tetap_items:
             messagebox.showwarning("Peringatan", "Data dalam kategori tersebut tidak ada atau file belum diupload!")
             return
@@ -719,10 +1056,11 @@ class BOSBudgetAnalyzer:
                                     "Rincian Aset Tetap Lainnya (5.2.04 & 5.2.05)",
                                     "Total Aset Tetap Lainnya")
         
-        # Clear BKU section for non-persediaan categories
-        self._clear_bku_for_non_persediaan()
+        # Clear BKU section for non-supported categories
+        self._display_bku_for_category("Aset Tetap")
 
     def show_ringkasan(self):
+        """Show summary data"""
         if not self.processor.excel_data and self.processor.total_penerimaan == 0:
             messagebox.showwarning("Peringatan", "File belum diupload!")
             return
@@ -767,11 +1105,65 @@ class BOSBudgetAnalyzer:
                                 font=('Arial', 10, 'bold'), bg='#ecf0f1', fg='#2c3e50')
         sekolah_label.pack(anchor='w', pady=5)
         
-        # Clear BKU section for non-persediaan categories
-        self._clear_bku_for_non_persediaan()
+        # Clear BKU section for non-supported categories
+        self._clear_bku_for_non_supported()
 
-    def _clear_bku_for_non_persediaan(self):
-        """Clear BKU section and show placeholder for non-persediaan categories"""
+    def show_ringkasan(self):
+        """Show summary data - UPDATED untuk include BKU summary"""
+        if not self.processor.excel_data and self.processor.total_penerimaan == 0:
+            messagebox.showwarning("Peringatan", "File belum diupload!")
+            return
+        
+        # Display RKAS summary (existing code)
+        columns = ('Kategori', 'Jumlah (Rp)')
+        self.create_standard_table("Ringkasan Anggaran", columns)
+        
+        # Get summary data from processor
+        summary_data = self.processor.get_summary_data()
+        
+        # Data ringkasan dengan background color info
+        ringkasan_data = [
+            ("PAGU TAHUN 2025", self.processor.total_penerimaan, True),
+            ("BELANJA OPERASI", summary_data['total_belanja_persediaan'], True),
+            ("  BELANJA HONOR", summary_data['total_honor'], False),
+            ("  BELANJA JASA", summary_data['jasa_sesungguhnya'], False),
+            ("  BELANJA PEMELIHARAAN", summary_data['total_pemeliharaan'], False),
+            ("  BELANJA PERJALANAN", summary_data['total_perjalanan'], False),
+            ("  BELANJA PERSEDIAAN", summary_data['belanja_persediaan_ringkasan'], False),
+            ("BELANJA MODAL", summary_data['belanja_modal'], True),
+            ("  PERALATAN DAN MESIN", summary_data['total_peralatan'], False),
+            ("  ASET TETAP LAINNYA", summary_data['total_aset_tetap'], False),
+            ("TOTAL ANGGARAN", summary_data['total_anggaran'], True)
+        ]
+        
+        # Insert data into table
+        for kategori, jumlah, is_highlight in ringkasan_data:
+            formatted_jumlah = FormatUtils.format_currency(jumlah)
+            item_id = self.tree.insert('', 'end', values=(kategori, formatted_jumlah))
+            
+            # Set background color for highlighted items
+            if is_highlight:
+                self.tree.set(item_id, 'Kategori', kategori)
+                self.tree.set(item_id, 'Jumlah (Rp)', formatted_jumlah)
+                # Configure tag for green background
+                self.tree.tag_configure('highlight', background='#2ecc71', foreground='white')
+                self.tree.item(item_id, tags=('highlight',))
+        
+        # Add school name label using consistent layout
+        sekolah_label = tk.Label(self.summary_frame, text=f"SEKOLAH {self.processor.nama_sekolah}", 
+                                font=('Arial', 10, 'bold'), bg='#ecf0f1', fg='#2c3e50')
+        sekolah_label.pack(anchor='w', pady=5)
+        
+        # AUTO-DISPLAY BKU SUMMARY untuk triwulan yang dipilih
+        if hasattr(self.processor, 'bku_data_available') and self.processor.bku_data_available:
+            selected_triwulan = self.selected_triwulan.get()
+            self._display_bku_summary_for_triwulan(selected_triwulan)
+        else:
+            # Clear BKU section jika tidak ada data
+            self._clear_bku_for_non_supported()
+
+    def _clear_bku_for_non_supported(self):
+        """Clear BKU section and show placeholder for non-supported categories"""
         # Clear current BKU content
         for widget in self.bku_frame.winfo_children():
             widget.destroy()
