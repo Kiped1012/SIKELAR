@@ -111,7 +111,7 @@ class HomePage(BasePage):
         
         info_text = tk.Label(
             info_content,
-            text="• Pilih menu 'RKAS dan BKU' untuk mengupload dan memproses file Excel\n• Pilih menu 'Pengesahan' untuk melihat detail hasil analisis pengesahan",
+            text="• Pilih menu 'RKAS dan BKU' untuk melihat perhitungan RKAS dan Realisasi BKU dengan mengupload 1 file dalam bentuk .xlsx (sheet 1: RKAS, sheet 2: BKU)\n• Pilih menu 'Pengesahan' untuk melihat detail persentase dari pagu untuk buku, sarana prasarana, dan honor",
             font=tkFont.Font(family="Segoe UI", size=11),
             bg='#ffffff',
             fg='#6c757d',

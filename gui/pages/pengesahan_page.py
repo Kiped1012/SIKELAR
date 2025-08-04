@@ -292,6 +292,13 @@ class PengesahanPage(BasePage):
             if (widget_under_mouse != self.input_text and 
                 widget_under_mouse != self.output_text and
                 not self._is_child_of_scrolledtext(widget_under_mouse)):
+                
+                # Tambahkan batasan scroll ini:
+                current_view = self.canvas.canvasy(0)
+                if event.delta > 0 and current_view <= 0:
+                    # Jika scroll ke atas dan sudah di posisi paling atas, jangan scroll lagi
+                    return
+                
                 self.canvas.yview_scroll(int(-1*(event.delta/120)), "units")
         
         def _bind_to_mousewheel(event):

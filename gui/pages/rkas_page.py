@@ -12,6 +12,9 @@ from tkinter import ttk, filedialog, messagebox
 from typing import Dict, List
 import sys
 import os
+import threading
+import time
+
 
 # Add parent directory to path to import backend modules
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -232,6 +235,131 @@ class RKASPage(BasePage):  # Inherit dari BasePage
                                 font=('Arial', 10), bg='#ecf0f1', fg='#7f8c8d')
         self.file_label.pack(pady=5)
 
+    def _create_progress_dialog(self):
+        """Create progress dialog window - CENTERED VERSION"""
+        self.progress_window = tk.Toplevel(self.main_app.root)
+        self.progress_window.title("Memproses File Excel")
+        self.progress_window.geometry("400x150")
+        self.progress_window.resizable(False, False)
+        
+        # Center the progress window
+        self.progress_window.transient(self.main_app.root)
+        self.progress_window.grab_set()
+        
+        # FIXED: Center positioning - gunakan screen dimensions
+        # Get screen dimensions
+        screen_width = self.progress_window.winfo_screenwidth()
+        screen_height = self.progress_window.winfo_screenheight()
+        
+        # Calculate position for center
+        window_width = 400
+        window_height = 150
+        x = (screen_width - window_width) // 2
+        y = (screen_height - window_height) // 2
+        
+        # Set position to center of screen
+        self.progress_window.geometry(f"{window_width}x{window_height}+{x}+{y}")
+        
+        # Progress frame
+        progress_frame = tk.Frame(self.progress_window, bg='#f8f9fa', padx=20, pady=20)
+        progress_frame.pack(fill='both', expand=True)
+        
+        # Status label
+        self.progress_label = tk.Label(
+            progress_frame,
+            text="Memulai pemrosesan file...",
+            font=('Arial', 11),
+            bg='#f8f9fa',
+            fg='#2c3e50'
+        )
+        self.progress_label.pack(pady=(0, 10))
+        
+        # Progress bar
+        self.progress_bar = ttk.Progressbar(
+            progress_frame,
+            length=350,
+            mode='determinate',
+            style='Custom.Horizontal.TProgressbar'
+        )
+        self.progress_bar.pack(pady=(0, 10))
+        
+        # Percentage label
+        self.percentage_label = tk.Label(
+            progress_frame,
+            text="0%",
+            font=('Arial', 10, 'bold'),
+            bg='#f8f9fa',
+            fg='#27ae60'
+        )
+        self.percentage_label.pack()
+        
+        # Style the progress bar
+        style = ttk.Style()
+        style.configure(
+            'Custom.Horizontal.TProgressbar',
+            background='#27ae60',
+            troughcolor='#ecf0f1',
+            borderwidth=1,
+            lightcolor='#27ae60',
+            darkcolor='#27ae60'
+        )
+
+    def _update_progress(self, progress, message):
+        """Update progress bar and message"""
+        if hasattr(self, 'progress_window') and self.progress_window.winfo_exists():
+            self.progress_bar['value'] = progress
+            self.progress_label.config(text=message)
+            self.percentage_label.config(text=f"{int(progress)}%")
+            self.progress_window.update()
+
+    def _close_progress_dialog(self):
+        """Close progress dialog"""
+        if hasattr(self, 'progress_window') and self.progress_window.winfo_exists():
+            self.progress_window.grab_release()
+            self.progress_window.destroy()
+
+    def _process_excel_with_progress(self, file_path):
+        """Process Excel file with progress updates"""
+        try:
+            # Step 1: Initialize
+            self._update_progress(10, "Membaca file Excel...")
+            time.sleep(0.2)
+            
+            # Step 2: Extract Excel data
+            self._update_progress(30, "Mengekstrak data RKAS...")
+            self.processor.extract_excel_data(file_path)
+            time.sleep(0.3)
+            
+            # Step 3: Process RKAS data
+            self._update_progress(60, "Memproses data anggaran...")
+            time.sleep(0.2)
+            
+            # Step 4: Process BKU data (if available)
+            if hasattr(self.processor, 'bku_data_available') and self.processor.bku_data_available:
+                self._update_progress(80, "Memproses data BKU...")
+                time.sleep(0.3)
+            else:
+                self._update_progress(80, "Menyelesaikan pemrosesan...")
+                time.sleep(0.2)
+            
+            # Step 5: Finalize
+            self._update_progress(95, "Mempersiapkan tampilan...")
+            time.sleep(0.2)
+            
+            # Step 6: Complete
+            self._update_progress(100, "Selesai!")
+            time.sleep(0.3)
+            
+            # Success flag
+            self.processing_success = True
+            self.processing_error = None
+            
+        except Exception as e:
+            self.processing_success = False
+            self.processing_error = str(e)
+            self._update_progress(100, f"Error: {str(e)}")
+            time.sleep(1)
+
     def _create_button_section(self):
         """Create navigation button section - diubah untuk menggunakan scrollable_frame"""
         main_button_frame = tk.Frame(self.scrollable_frame, bg='#f0f0f0', height=80)
@@ -254,8 +382,9 @@ class RKASPage(BasePage):  # Inherit dari BasePage
     def _create_split_results_section(self):
         """Create split results display section - diubah untuk menggunakan scrollable_frame"""
         # Main container for split results
-        self.main_results_container = tk.Frame(self.scrollable_frame, bg='#f0f0f0')
+        self.main_results_container = tk.Frame(self.scrollable_frame, bg='#f0f0f0', height=620)
         self.main_results_container.pack(fill='both', expand=True, padx=10, pady=10)
+        self.main_results_container.pack_propagate(False)
         
         # Left side - RKAS
         self._create_rkas_section()
@@ -275,7 +404,7 @@ class RKASPage(BasePage):  # Inherit dari BasePage
         
         # RKAS Header
         rkas_header = tk.Label(self.rkas_container, text="  RKAS (Rencana Kegiatan dan Anggaran Sekolah)", 
-                            font=('Arial', 14, 'bold'), bg='#3498db', fg='white', pady=10, 
+                            font=('Arial', 14, 'bold'), bg='#27ae60', fg='white', pady=10, 
                             anchor='w')
         rkas_header.pack(fill='x')
         
@@ -567,51 +696,97 @@ class RKASPage(BasePage):  # Inherit dari BasePage
             self.bku_canvas.yview_scroll(1, "units")
 
     def upload_excel(self):
-        """Handle Excel file upload - UPDATED to process BKU"""
-        file_path = filedialog.askopenfilename(title="Pilih File Excel RKAS", filetypes=[("Excel files", "*.xlsx")])
+        """Handle Excel file upload with progress bar"""
+        file_path = filedialog.askopenfilename(
+            title="Pilih File Excel RKAS", 
+            filetypes=[("Excel files", "*.xlsx")]
+        )
+        
         if file_path:
+            # Initialize processing flags
+            self.processing_success = False
+            self.processing_error = None
+            
+            # Disable upload button during processing
+            self.upload_btn.config(state='disabled', text="Pilih File Excel (.xlsx)")
+            
+            # Create and show progress dialog
+            self._create_progress_dialog()
+            
+            # Start processing in separate thread
+            processing_thread = threading.Thread(
+                target=self._process_excel_with_progress,
+                args=(file_path,)
+            )
+            processing_thread.daemon = True
+            processing_thread.start()
+            
+            # Monitor processing completion
+            self._monitor_processing_completion(file_path, processing_thread)
+
+    def _monitor_processing_completion(self, file_path, processing_thread):
+        """Monitor processing completion and handle results"""
+        if processing_thread.is_alive():
+            # Check again in 100ms
+            self.main_app.root.after(100, lambda: self._monitor_processing_completion(file_path, processing_thread))
+            return
+        
+        # Processing completed
+        self._close_progress_dialog()
+        
+        if self.processing_success:
+            # Success handling
+            self.file_label.config(text=f"File dipilih: {file_path.split('/')[-1]}", fg='#27ae60')
+            
+            # Update placeholders
+            self._update_rkas_placeholder_after_upload()
+            self._create_bku_placeholder()
+            
+            # Prepare success message
+            bku_status = "BKU sheet ditemukan dan diproses" if self.processor.bku_data_available else "BKU sheet tidak ditemukan"
+            
+            # Count BKU data if available
+            bku_info = ""
+            if self.processor.bku_data_available:
+                total_bku_items = 0
+                for triwulan in ['Triwulan 1', 'Triwulan 2', 'Triwulan 3', 'Triwulan 4']:
+                    items = self.processor.get_bku_belanja_persediaan_by_triwulan(triwulan)
+                    if items:
+                        total_bku_items += len(items)
+                        bku_info += f"\n{triwulan}: {len(items)} item realisasi"
+                
+                if total_bku_items > 0:
+                    bku_status += f" ({total_bku_items} total item){bku_info}"
+            
+            # Show success message
+            messagebox.showinfo("Berhasil", 
+                f"File Excel berhasil diproses!\n"
+                f"Sheet RKAS: Berhasil diproses\n"
+                f"Sheet BKU: Berhasil diproses\n"
+                f"Total Penerimaan: {FormatUtils.format_currency(self.processor.total_penerimaan)}\n"
+                f"Ditemukan {len(self.processor.belanja_persediaan_items)} item belanja persediaan\n"
+                f"Ditemukan {len(self.processor.belanja_jasa_items)} item belanja jasa\n"
+                f"Ditemukan {len(self.processor.belanja_pemeliharaan_items)} item belanja pemeliharaan\n"
+                f"Ditemukan {len(self.processor.belanja_perjalanan_items)} item belanja perjalanan\n"
+                f"Ditemukan {len(self.processor.peralatan_items)} item peralatan dan mesin\n"
+                f"Ditemukan {len(self.processor.aset_tetap_items)} item aset tetap lainnya")
+    
+            
+        else:
+            # Error handling
+            messagebox.showerror("Error", f"Gagal membaca file Excel: {self.processing_error}")
+            
+            # Re-enable upload button on error
+            self.upload_btn.config(state='normal', text="Pilih File Excel (.xlsx)")
+
+    def __del__(self):
+        """Cleanup when object is destroyed"""
+        if hasattr(self, 'progress_window'):
             try:
-                self.processor.extract_excel_data(file_path)
-                self.file_label.config(text=f"File dipilih: {file_path.split('/')[-1]}", fg='#27ae60')
-
-                # Disable upload button after successful upload
-                self.upload_btn.config(state='disabled')
-
-                # Update RKAS placeholder to show available data
-                self._update_rkas_placeholder_after_upload()
-
-                # Update BKU placeholder to show available data
-                self._create_bku_placeholder()
-
-                # Info message dengan detail sheet
-                bku_status = "BKU sheet ditemukan dan diproses" if self.processor.bku_data_available else "BKU sheet tidak ditemukan"
-                
-                # Count BKU data if available
-                bku_info = ""
-                if self.processor.bku_data_available:
-                    total_bku_items = 0
-                    for triwulan in ['Triwulan 1', 'Triwulan 2', 'Triwulan 3', 'Triwulan 4']:
-                        items = self.processor.get_bku_belanja_persediaan_by_triwulan(triwulan)
-                        if items:
-                            total_bku_items += len(items)
-                            bku_info += f"\n{triwulan}: {len(items)} item realisasi"
-                    
-                    if total_bku_items > 0:
-                        bku_status += f" ({total_bku_items} total item){bku_info}"
-                
-                messagebox.showinfo("Berhasil", 
-                    f"File Excel berhasil diproses!\n"
-                    f"Sheet RKAS: Berhasil diproses\n"
-                    f"Sheet BKU: Berhasil diproses\n"
-                    f"Total Penerimaan: {FormatUtils.format_currency(self.processor.total_penerimaan)}\n"
-                    f"Ditemukan {len(self.processor.belanja_persediaan_items)} item belanja persediaan\n"
-                    f"Ditemukan {len(self.processor.belanja_jasa_items)} item belanja jasa\n"
-                    f"Ditemukan {len(self.processor.belanja_pemeliharaan_items)} item belanja pemeliharaan\n"
-                    f"Ditemukan {len(self.processor.belanja_perjalanan_items)} item belanja perjalanan\n"
-                    f"Ditemukan {len(self.processor.peralatan_items)} item peralatan dan mesin\n"
-                    f"Ditemukan {len(self.processor.aset_tetap_items)} item aset tetap lainnya")
-            except Exception as e:
-                messagebox.showerror("Error", f"Gagal membaca file Excel: {str(e)}")
+                if self.progress_window.winfo_exists():
+                    self.progress_window.destroy()
+            except:
+                pass
 
     def _update_rkas_placeholder_after_upload(self):
         """Update RKAS placeholder after successful file upload"""
@@ -1280,13 +1455,13 @@ class RKASPage(BasePage):  # Inherit dari BasePage
         """Create navigation buttons for different categories"""
         # Define button configurations
         button_configs = [
-            ("Belanja Persediaan", self.show_belanja_persediaan, '#3498db'),
-            ("Belanja Jasa", self.show_belanja_jasa, '#e67e22'),
-            ("Pemeliharaan", self.show_belanja_pemeliharaan, '#9b59b6'),
-            ("Perjalanan Dinas", self.show_belanja_perjalanan, '#1abc9c'),
-            ("Peralatan", self.show_peralatan, '#34495e'),
-            ("Aset Tetap", self.show_aset_tetap, '#e74c3c'),
-            ("Ringkasan", self.show_ringkasan, '#27ae60')
+            ("Belanja Persediaan", self.show_belanja_persediaan, '#4a69bd'),
+            ("Belanja Jasa", self.show_belanja_jasa, '#4a69bd'),
+            ("Pemeliharaan", self.show_belanja_pemeliharaan, '#4a69bd'),
+            ("Perjalanan Dinas", self.show_belanja_perjalanan, '#4a69bd'),
+            ("Peralatan", self.show_peralatan, '#4a69bd'),
+            ("Aset Tetap", self.show_aset_tetap, '#4a69bd'),
+            ("Ringkasan", self.show_ringkasan, '#4a69bd')
         ]
         
         # Clear existing buttons
@@ -1342,9 +1517,9 @@ class RKASPage(BasePage):  # Inherit dari BasePage
         self.button_canvas.bind('<Configure>', self._on_canvas_configure)
         
         # Bind mouse wheel events for horizontal scrolling
-        self.button_canvas.bind("<MouseWheel>", self._on_mousewheel)
-        self.button_canvas.bind("<Button-4>", self._on_mousewheel)  # Linux
-        self.button_canvas.bind("<Button-5>", self._on_mousewheel)  # Linux
+        # self.button_canvas.bind("<MouseWheel>", self._on_mousewheel)
+        # self.button_canvas.bind("<Button-4>", self._on_mousewheel)  # Linux
+        # self.button_canvas.bind("<Button-5>", self._on_mousewheel)  # Linux
 
 
 
