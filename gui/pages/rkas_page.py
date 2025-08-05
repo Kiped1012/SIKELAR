@@ -10,6 +10,14 @@ Added RKAS placeholder functionality
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
 from typing import Dict, List
+from reportlab.lib.pagesizes import A4
+from reportlab.lib import colors
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib.units import inch
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+from reportlab.pdfgen import canvas
+from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
+import datetime
 import sys
 import os
 import threading
@@ -292,6 +300,199 @@ class RKASPage(BasePage):  # Inherit dari BasePage
         self._create_upload_section() 
         self._create_button_section()
         self._create_split_results_section()
+
+    def export_ringkasan_to_pdf(self):
+        """Export ringkasan data to PDF with RKAS above and BKU realisasi below"""
+        if not self.processor.excel_data and self.processor.total_penerimaan == 0:
+            messagebox.showwarning("Peringatan", "Tidak ada data untuk diekspor!")
+            return
+        
+        # Ask user for save location
+        file_path = filedialog.asksaveasfilename(
+            title="Simpan Laporan PDF",
+            defaultextension=".pdf",
+            filetypes=[("PDF files", "*.pdf")]
+        )
+        
+        if not file_path:
+            return
+        
+        try:
+            # Create PDF document
+            doc = SimpleDocTemplate(file_path, pagesize=A4, 
+                                rightMargin=72, leftMargin=72, 
+                                topMargin=72, bottomMargin=18)
+            
+            # Container for PDF elements
+            story = []
+            
+            # Get styles
+            styles = getSampleStyleSheet()
+            title_style = ParagraphStyle(
+                'CustomTitle',
+                parent=styles['Heading1'],
+                alignment=TA_CENTER,
+                spaceAfter=30,
+                fontSize=16,
+                fontName='Helvetica-Bold'
+            )
+            
+            subtitle_style = ParagraphStyle(
+                'CustomSubtitle',
+                parent=styles['Heading2'],
+                alignment=TA_CENTER,
+                spaceAfter=20,
+                fontSize=14,
+                fontName='Helvetica-Bold'
+            )
+            
+            normal_style = ParagraphStyle(
+                'CustomNormal',
+                parent=styles['Normal'],
+                alignment=TA_LEFT,
+                spaceAfter=10,
+                fontSize=10
+            )
+            
+            # Header
+            story.append(Paragraph("LAPORAN RINGKASAN ANGGARAN", title_style))
+            story.append(Paragraph(f"SEKOLAH {self.processor.nama_sekolah}", subtitle_style))
+            story.append(Paragraph(f"Dicetak pada: {datetime.datetime.now().strftime('%d %B %Y, %H:%M:%S')}", normal_style))
+            story.append(Spacer(1, 20))
+            
+            # RKAS Section
+            story.append(Paragraph("RKAS (Rencana Kegiatan dan Anggaran Sekolah)", subtitle_style))
+            
+            # Get RKAS summary data
+            summary_data = self.processor.get_summary_data()
+            
+            # RKAS table data
+            rkas_data = [
+                ['Kategori', 'Jumlah (Rp)'],
+                ['PAGU TAHUN 2025', FormatUtils.format_currency(self.processor.total_penerimaan)],
+                ['BELANJA OPERASI', FormatUtils.format_currency(summary_data['total_belanja_operasi'])],
+                ['  BELANJA HONOR', FormatUtils.format_currency(summary_data['total_honor'])],
+                ['  BELANJA JASA', FormatUtils.format_currency(summary_data['jasa_sesungguhnya'])],
+                ['  BELANJA PEMELIHARAAN', FormatUtils.format_currency(summary_data['total_pemeliharaan'])],
+                ['  BELANJA PERJALANAN', FormatUtils.format_currency(summary_data['total_perjalanan'])],
+                ['  BELANJA PERSEDIAAN', FormatUtils.format_currency(summary_data['belanja_persediaan_ringkasan'])],
+                ['BELANJA MODAL', FormatUtils.format_currency(summary_data['belanja_modal'])],
+                ['  PERALATAN DAN MESIN', FormatUtils.format_currency(summary_data['total_peralatan'])],
+                ['  ASET TETAP LAINNYA', FormatUtils.format_currency(summary_data['total_aset_tetap'])],
+                ['TOTAL ANGGARAN', FormatUtils.format_currency(summary_data['total_anggaran'])]
+            ]
+            
+            # Create RKAS table
+            rkas_table = Table(rkas_data, colWidths=[4*inch, 2*inch])
+            rkas_table.setStyle(TableStyle([
+                ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+                ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+                ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+                ('ALIGN', (1, 0), (1, -1), 'RIGHT'),
+                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                ('FONTSIZE', (0, 0), (-1, 0), 12),
+                ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
+                ('FONTSIZE', (0, 1), (-1, -1), 10),
+                ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+                ('BACKGROUND', (0, 1), (-1, 1), colors.lightgrey),  # PAGU
+                ('BACKGROUND', (0, 2), (-1, 2), colors.lightgrey),  # BELANJA OPERASI
+                ('BACKGROUND', (0, 8), (-1, 8), colors.lightgrey),  # BELANJA MODAL
+                ('BACKGROUND', (0, 11), (-1, 11), colors.lightgrey),  # TOTAL ANGGARAN
+                ('FONTNAME', (0, 1), (-1, 1), 'Helvetica-Bold'),
+                ('FONTNAME', (0, 2), (-1, 2), 'Helvetica-Bold'),
+                ('FONTNAME', (0, 8), (-1, 8), 'Helvetica-Bold'),
+                ('FONTNAME', (0, 11), (-1, 11), 'Helvetica-Bold'),
+                ('GRID', (0, 0), (-1, -1), 1, colors.black)
+            ]))
+            
+            story.append(rkas_table)
+            story.append(Spacer(1, 30))
+            
+            # BKU Realisasi Section - All Triwulans
+            story.append(Paragraph("REALISASI BKU (Buku Kas Umum)", subtitle_style))
+            
+            if hasattr(self.processor, 'bku_data_available') and self.processor.bku_data_available:
+                for triwulan in ["Triwulan 1", "Triwulan 2", "Triwulan 3", "Triwulan 4"]:
+                    try:
+                        bku_summary_data = self.processor.get_bku_summary_data_by_triwulan(triwulan)
+                        if bku_summary_data and bku_summary_data.get('total_realisasi', 0) > 0:
+                            # Add triwulan subtitle
+                            story.append(Paragraph(f"Realisasi {triwulan}", 
+                                                ParagraphStyle('TW_Title', parent=styles['Heading3'], 
+                                                            alignment=TA_LEFT, fontSize=12, 
+                                                            fontName='Helvetica-Bold', spaceAfter=10)))
+                            
+                            # Calculate additional data
+                            total_realisasi_sampai_saat_ini = self._calculate_total_realisasi_sampai_saat_ini(triwulan)
+                            total_pagu_rkas = self.processor.total_penerimaan
+                            total_sisa_dana_1_tahun = total_pagu_rkas - total_realisasi_sampai_saat_ini
+                            total_sisa_dana_sampai_saat_ini = (total_pagu_rkas * 0.5) - total_realisasi_sampai_saat_ini
+                            persentase_realisasi = (total_realisasi_sampai_saat_ini / total_pagu_rkas * 100) if total_pagu_rkas > 0 else 0
+                            
+                            # BKU table data
+                            bku_data = [
+                                ['Kategori', 'Jumlah (Rp)'],
+                                ['BELANJA OPERASI', FormatUtils.format_currency(bku_summary_data['total_belanja_operasi_bku'])],
+                                ['  BELANJA HONOR', FormatUtils.format_currency(bku_summary_data['total_honor_bku'])],
+                                ['  BELANJA JASA', FormatUtils.format_currency(bku_summary_data['jasa_sesungguhnya_bku'])],
+                                ['  BELANJA PEMELIHARAAN', FormatUtils.format_currency(bku_summary_data['total_pemeliharaan_bku'])],
+                                ['  BELANJA PERJALANAN', FormatUtils.format_currency(bku_summary_data['total_perjalanan_bku'])],
+                                ['  BELANJA PERSEDIAAN', FormatUtils.format_currency(bku_summary_data['total_persediaan_bku'])],
+                                ['BELANJA MODAL', FormatUtils.format_currency(bku_summary_data['belanja_modal_bku'])],
+                                ['  PERALATAN DAN MESIN', FormatUtils.format_currency(bku_summary_data['total_peralatan_bku'])],
+                                ['  ASET TETAP LAINNYA', FormatUtils.format_currency(bku_summary_data['total_aset_tetap_bku'])],
+                                ['TOTAL REALISASI', FormatUtils.format_currency(bku_summary_data['total_realisasi'])],
+                                ['', ''],  # Separator
+                                [f'TOTAL REALISASI SAMPAI SAAT INI ({self._get_periode_text(triwulan)})', 
+                                FormatUtils.format_currency(total_realisasi_sampai_saat_ini)],
+                                ['TOTAL SISA DANA BOSP REGULER (1 TAHUN)', 
+                                FormatUtils.format_currency(total_sisa_dana_1_tahun)],
+                                ['TOTAL SISA DANA BOSP REGULER SAMPAI SAAT INI', 
+                                FormatUtils.format_currency(total_sisa_dana_sampai_saat_ini)],
+                                ['PERSENTASE REALISASI DANA BOSP SAMPAI SAAT INI', f'{persentase_realisasi:.2f}%']
+                            ]
+                            
+                            # Create BKU table
+                            bku_table = Table(bku_data, colWidths=[4*inch, 2*inch])
+                            bku_table.setStyle(TableStyle([
+                                ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+                                ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+                                ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+                                ('ALIGN', (1, 0), (1, -1), 'RIGHT'),
+                                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                                ('FONTSIZE', (0, 0), (-1, 0), 12),
+                                ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
+                                ('FONTSIZE', (0, 1), (-1, -1), 10),
+                                ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+                                ('BACKGROUND', (0, 1), (-1, 1), colors.lightcoral),  # BELANJA OPERASI
+                                ('BACKGROUND', (0, 7), (-1, 7), colors.lightcoral),  # BELANJA MODAL
+                                ('BACKGROUND', (0, 10), (-1, 10), colors.lightcoral),  # TOTAL REALISASI
+                                ('BACKGROUND', (0, 12), (-1, 12), colors.lightgreen),  # TOTAL REALISASI SAMPAI SAAT INI
+                                ('BACKGROUND', (0, 13), (-1, 13), colors.lightblue),  # SISA DANA 1 TAHUN
+                                ('BACKGROUND', (0, 14), (-1, 14), colors.plum),  # SISA DANA 50%
+                                ('BACKGROUND', (0, 15), (-1, 15), colors.orange),  # PERSENTASE
+                                ('FONTNAME', (0, 1), (-1, 1), 'Helvetica-Bold'),
+                                ('FONTNAME', (0, 7), (-1, 7), 'Helvetica-Bold'),
+                                ('FONTNAME', (0, 10), (-1, 10), 'Helvetica-Bold'),
+                                ('FONTNAME', (0, 12), (-1, 15), 'Helvetica-Bold'),
+                                ('GRID', (0, 0), (-1, -1), 1, colors.black)
+                            ]))
+                            
+                            story.append(bku_table)
+                            story.append(Spacer(1, 20))
+                            
+                    except Exception as e:
+                        print(f"Error processing {triwulan}: {e}")
+                        continue
+            else:
+                story.append(Paragraph("Data BKU tidak tersedia", normal_style))
+            
+            # Build PDF
+            doc.build(story)
+            messagebox.showinfo("Berhasil", f"Laporan PDF berhasil disimpan di:\n{file_path}")
+            
+        except Exception as e:
+            messagebox.showerror("Error", f"Gagal membuat PDF: {str(e)}")
 
     def _create_header(self):
         """Create header section with back button"""
@@ -1426,6 +1627,29 @@ class RKASPage(BasePage):  # Inherit dari BasePage
                             text=f"SEKOLAH {self.processor.nama_sekolah}", 
                             font=('Arial', 10, 'bold'), bg='#ecf0f1', fg='#2c3e50')
         school_label.pack(anchor='w', pady=(10, 5), padx=10)
+
+        # Export PDF button
+        export_btn = tk.Button(summary_frame,
+                             text="📄 Export PDF",
+                             command=self.export_ringkasan_to_pdf,
+                             bg='#e74c3c',
+                             fg='white',
+                             font=('Arial', 10, 'bold'),
+                             padx=15,
+                             pady=5,
+                             cursor='hand2',
+                             relief='raised',
+                             bd=2)
+        export_btn.pack(anchor='w', pady=(5, 10), padx=10)
+        
+        # Add hover effect to export button
+        def on_export_hover(e):
+            export_btn.config(bg='#c0392b')
+        def on_export_leave(e):
+            export_btn.config(bg='#e74c3c')
+        
+        export_btn.bind('<Enter>', on_export_hover)
+        export_btn.bind('<Leave>', on_export_leave)
         
         # Update canvas scroll region
         self.bku_frame.update_idletasks()
@@ -1724,8 +1948,3 @@ class RKASPage(BasePage):  # Inherit dari BasePage
         # self.button_canvas.bind("<MouseWheel>", self._on_mousewheel)
         # self.button_canvas.bind("<Button-4>", self._on_mousewheel)  # Linux
         # self.button_canvas.bind("<Button-5>", self._on_mousewheel)  # Linux
-
-
-
-
-
