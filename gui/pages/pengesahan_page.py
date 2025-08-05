@@ -1,6 +1,7 @@
 """
 Pengesahan page for SIKELAR application
-Enhanced UI with modern design, full scrolling support, and improved symmetrical layout
+Enhanced UI with modern design, full scrolling support, improved symmetrical layout,
+and percentage validation feature for both BUKU (10%) and SARANA & PRASARANA (20%)
 """
 
 import tkinter as tk
@@ -14,6 +15,11 @@ class PengesahanPage(BasePage):
         super().__init__(parent, main_app)
         self.active_button = None
         self.category_buttons = {}
+        self.validation_frame = None
+
+        self.honor_school_type = None  # 'negeri' atau 'swasta'
+        self.honor_choice_made = False  # Flag untuk tracking apakah pilihan sudah dibuat
+        self.honor_dialog_window = None  # Reference ke dialog window
         
     def build_page(self):
         """Build the pengesahan page content with enhanced modern UI and improved symmetrical layout"""
@@ -282,8 +288,269 @@ class PengesahanPage(BasePage):
                                                     insertbackground='#2c3e50')
         self.output_text.pack(fill=tk.BOTH, expand=True, padx=15, pady=15)
 
-         # Footer section
+        # ENHANCED: Percentage Validation Section for both BUKU and SARANA
+        self.create_validation_section(main_container)
+
+        # Footer section
         self.create_footer()
+    
+    def create_validation_section(self, parent):
+        """Create percentage validation section with indicators for both BUKU and SARANA"""
+        # Container for validation section
+        validation_container = tk.Frame(parent, bg='#f8f9fa')
+        validation_container.pack(fill=tk.X, pady=(20, 0))
+        
+        # Create validation frame (initially hidden)
+        self.validation_frame = tk.Frame(validation_container, bg='white', relief='flat', bd=0)
+        # Don't pack it yet - will be shown when data is processed
+        
+        # Validation content
+        validation_inner = tk.Frame(self.validation_frame, bg='white')
+        validation_inner.pack(fill=tk.X, padx=25, pady=15)
+        
+        # Left side - status indicator
+        self.status_frame = tk.Frame(validation_inner, bg='white')
+        self.status_frame.pack(side=tk.LEFT, fill=tk.Y)
+        
+        # Status indicator (will be updated based on percentage)
+        self.status_indicator = tk.Label(self.status_frame,
+                                        text="",
+                                        font=("Segoe UI", 12, "bold"),
+                                        bg='white')
+        self.status_indicator.pack(side=tk.LEFT, padx=(0, 15))
+        
+        # Right side - action button or message
+        self.action_frame = tk.Frame(validation_inner, bg='white')
+        self.action_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        
+        # Action button (for when percentage exceeds limit)
+        self.action_button = tk.Button(self.action_frame,
+                                      text="Lihat Ketentuan",
+                                      command=self.show_violation_message,
+                                      bg='#dc3545',
+                                      fg='white',
+                                      font=("Segoe UI", 10, "bold"),
+                                      relief='flat',
+                                      padx=20,
+                                      pady=8,
+                                      cursor='hand2',
+                                      bd=0)
+        
+        # Status message (for when percentage is within limit)
+        self.status_message = tk.Label(self.action_frame,
+                                      text="Persentase mencukupi",
+                                      font=("Segoe UI", 11, "bold"),
+                                      bg='white',
+                                      fg='#28a745')
+        
+        # Message popup window (initially None)
+        self.message_window = None
+    
+    def update_validation_display(self, category, percentage):
+        """Update validation display based on category and percentage"""
+        # Determine the limit based on category
+        if category == 'buku':
+            limit = 10.0
+            category_name = "BUKU"
+        elif category == 'sarana':
+            limit = 20.0
+            category_name = "SARANA & PRASARANA"
+        elif category == 'honor':
+            # BARU: Tentukan limit berdasarkan jenis sekolah
+            if self.honor_school_type == 'negeri':
+                limit = 20.0
+                category_name = "HONOR (Sekolah Negeri)"
+            elif self.honor_school_type == 'swasta':
+                limit = 40.0
+                category_name = "HONOR (Sekolah Swasta)"
+            else:
+                return  # Jika belum ada pilihan jenis sekolah
+        else:
+            return  # No validation for other categories
+        
+        if percentage <= limit:
+            # Show green checkmark and success message
+            self.status_indicator.config(text="✅", fg='#28a745')
+            self.status_message.config(text=f"Persentase {category_name} mencukupi ({percentage:.2f}%)")
+            self.status_message.pack(side=tk.LEFT, padx=10)
+            self.action_button.pack_forget()
+        else:
+            # Show red warning and action button
+            self.status_indicator.config(text="⚠️", fg='#dc3545')
+            self.action_button.config(text=f"Lihat Ketentuan {category_name}")
+            self.action_button.pack(side=tk.LEFT, padx=10)
+            self.status_message.pack_forget()
+            
+            # Add hover effects to action button
+            self.action_button.bind("<Enter>", lambda e: self.on_hover(e, '#c82333'))
+            self.action_button.bind("<Leave>", lambda e: self.on_leave(e, '#dc3545'))
+        
+        # Store current validation info for popup
+        self.current_validation = {
+            'category': category,
+            'percentage': percentage,
+            'limit': limit,
+            'category_name': category_name
+        }
+        
+        # Show the validation frame
+        self.validation_frame.pack(fill=tk.X, pady=(15, 0))
+        
+    def hide_validation_display(self):
+        """Hide validation display"""
+        if self.validation_frame:
+            self.validation_frame.pack_forget()
+        if self.message_window:
+            self.message_window.destroy()
+            self.message_window = None
+    
+    def show_violation_message(self):
+        """Show violation message in a popup window with copyable text"""
+        if self.message_window:
+            self.message_window.destroy()
+        
+        # Get current validation info
+        if not hasattr(self, 'current_validation'):
+            return
+        
+        validation_info = self.current_validation
+        category = validation_info['category']
+        percentage = validation_info['percentage']
+        limit = validation_info['limit']
+        category_name = validation_info['category_name']
+        
+        # Create popup window
+        self.message_window = tk.Toplevel(self.page_frame)
+        self.message_window.title(f"Pelanggaran Ketentuan Juknis - {category_name}")
+        self.message_window.geometry("650x320")
+        self.message_window.configure(bg='#f8f9fa')
+        self.message_window.resizable(False, False)
+        
+        # Center the window
+        self.message_window.transient(self.main_app.root)
+        self.message_window.grab_set()
+        
+        # Header
+        header_frame = tk.Frame(self.message_window, bg='#dc3545', height=60)
+        header_frame.pack(fill='x')
+        header_frame.pack_propagate(False)
+        
+        header_label = tk.Label(header_frame,
+                            text=f"⚠️  Pelanggaran Ketentuan Juknis - {category_name}",
+                            font=("Segoe UI", 14, "bold"),
+                            bg='#dc3545',
+                            fg='white')
+        header_label.pack(expand=True)
+        
+        # Content frame
+        content_frame = tk.Frame(self.message_window, bg='#f8f9fa')
+        content_frame.pack(fill='both', expand=True, padx=20, pady=20)
+        
+        # Create appropriate message based on category
+        if category == 'buku':
+            message_text = f"""Pengadaan buku melebihi ketentuan juknis yaitu sebesar {percentage:.2f}%. Seharusnya dianggarkan maksimal {limit}%.
+
+Wajib menganggarkan pengembangan perpustakaan (buku) maksimal {limit}%."""
+        elif category == 'sarana':
+            message_text = f"""Pengadaan sarana dan prasarana melebihi ketentuan juknis yaitu sebesar {percentage:.2f}%. Seharusnya dianggarkan maksimal {limit}%.
+
+Wajib menganggarkan sarana dan prasarana maksimal {limit}% dari total anggaran sekolah."""
+        elif category == 'honor':
+            # BARU: Pesan untuk HONOR berdasarkan jenis sekolah
+            school_type_text = "sekolah negeri" if self.honor_school_type == 'negeri' else "sekolah swasta"
+            message_text = f"""Pengadaan honor melebihi ketentuan juknis yaitu sebesar {percentage:.2f}%. Seharusnya dianggarkan maksimal {limit}% untuk {school_type_text}.
+
+Wajib menganggarkan honor maksimal {limit}% dari total anggaran sekolah untuk {school_type_text}."""
+        
+        # Text area with message
+        text_area = scrolledtext.ScrolledText(content_frame,
+                                            height=7,
+                                            wrap=tk.WORD,
+                                            font=("Segoe UI", 10),
+                                            bg='white',
+                                            relief='solid',
+                                            bd=1)
+        text_area.pack(fill='both', expand=True, pady=(0, 15))
+        text_area.insert('1.0', message_text)
+        text_area.config(state='normal')  # Keep it editable for copying
+        
+        # Button frame
+        button_frame = tk.Frame(content_frame, bg='#f8f9fa')
+        button_frame.pack(fill='x')
+        
+        # Copy button
+        copy_button = tk.Button(button_frame,
+                            text="📋 Copy Text",
+                            command=lambda: self.copy_to_clipboard(message_text),
+                            bg='#007bff',
+                            fg='white',
+                            font=("Segoe UI", 10, "bold"),
+                            relief='flat',
+                            padx=20,
+                            pady=8,
+                            cursor='hand2',
+                            bd=0)
+        copy_button.pack(side='left')
+        
+        # Close button
+        close_button = tk.Button(button_frame,
+                                text="✖️ Tutup",
+                                command=self.message_window.destroy,
+                                bg='#6c757d',
+                                fg='white',
+                                font=("Segoe UI", 10, "bold"),
+                                relief='flat',
+                                padx=20,
+                                pady=8,
+                                cursor='hand2',
+                                bd=0)
+        close_button.pack(side='right')
+        
+        # Add hover effects
+        copy_button.bind("<Enter>", lambda e: self.on_hover(e, '#0056b3'))
+        copy_button.bind("<Leave>", lambda e: self.on_leave(e, '#007bff'))
+        close_button.bind("<Enter>", lambda e: self.on_hover(e, '#545b62'))
+        close_button.bind("<Leave>", lambda e: self.on_leave(e, '#6c757d'))
+
+    def copy_to_clipboard(self, text):
+        """Copy text to clipboard"""
+        self.page_frame.clipboard_clear()
+        self.page_frame.clipboard_append(text)
+        messagebox.showinfo("✅ Berhasil", "Teks berhasil disalin ke clipboard!")
+    
+    def get_current_buku_percentage(self):
+        """Get current percentage for BUKU category"""
+        try:
+            found_codes = self.main_app.data_processor.get_buku_data()
+            if not found_codes:
+                return 0.0
+            
+            total_buku = sum(self.main_app.data_processor.processed_data[kode]['jumlah'] 
+                           for kode in found_codes)
+            total_budget = self.main_app.data_processor.total_budget
+            
+            if total_budget > 0:
+                return (total_buku / total_budget) * 100
+            return 0.0
+        except:
+            return 0.0
+    
+    def get_current_sarana_percentage(self):
+        """Get current percentage for SARANA & PRASARANA category"""
+        try:
+            found_codes = self.main_app.data_processor.get_sarana_data()
+            if not found_codes:
+                return 0.0
+            
+            total_sarana = sum(self.main_app.data_processor.processed_data[kode]['jumlah'] 
+                             for kode in found_codes)
+            total_budget = self.main_app.data_processor.total_budget
+            
+            if total_budget > 0:
+                return (total_sarana / total_budget) * 100
+            return 0.0
+        except:
+            return 0.0
     
     def create_footer(self):
         """Create footer section with modern design matching the theme - FIXED VERSION"""
@@ -629,6 +896,15 @@ class PengesahanPage(BasePage):
                          relief='flat', 
                          bd=0)
         
+        self.honor_school_type = None
+        self.honor_choice_made = False
+        if self.honor_dialog_window:
+            self.honor_dialog_window.destroy()
+            self.honor_dialog_window = None
+
+        # Hide validation display when clearing data
+        self.hide_validation_display()
+        
         # Scroll to top after clearing
         self.scroll_to_top()
         
@@ -662,6 +938,9 @@ class PengesahanPage(BasePage):
             
             self.show_summary()
             
+            # Hide validation initially
+            self.hide_validation_display()
+            
             # Scroll to results section after processing
             self.canvas.update_idletasks()  # Ensure canvas is updated
             self.canvas.yview_moveto(0.6)  # Scroll to show results
@@ -674,7 +953,7 @@ class PengesahanPage(BasePage):
             
         except Exception as e:
             messagebox.showerror("❌ Error", f"Terjadi kesalahan saat memproses data:\n{str(e)}")
-    
+            
     def show_summary(self):
         """Menampilkan ringkasan data dengan enhanced formatting"""
         self.active_button = None
@@ -708,7 +987,7 @@ class PengesahanPage(BasePage):
         self.output_text.insert("1.0", output)
     
     def show_alokasi_buku(self):
-        """Menampilkan alokasi buku dengan enhanced display"""
+        """Menampilkan alokasi buku dengan enhanced display dan validasi 10%"""
         self.set_active_button('buku')
         
         found_codes = self.main_app.data_processor.get_buku_data()
@@ -722,12 +1001,19 @@ class PengesahanPage(BasePage):
         self.output_text.delete("1.0", tk.END)
         self.output_text.insert("1.0", output)
         
+        # Update validation display for BUKU category (10% limit)
+        if found_codes: 
+            buku_percentage = self.get_current_buku_percentage()
+            self.update_validation_display('buku', buku_percentage)
+        else:  # Jika tidak ada data BUKU
+            self.hide_validation_display()
+        
         # Auto-scroll to show the results
         self.canvas.update_idletasks()
         self.canvas.yview_moveto(0.8)
     
     def show_alokasi_sarana(self):
-        """Menampilkan alokasi sarana & prasarana dengan enhanced display"""
+        """Menampilkan alokasi sarana & prasarana dengan enhanced display dan validasi 20%"""
         self.set_active_button('sarana')
         
         found_codes = self.main_app.data_processor.get_sarana_data()
@@ -741,25 +1027,177 @@ class PengesahanPage(BasePage):
         self.output_text.delete("1.0", tk.END)
         self.output_text.insert("1.0", output)
         
+        # Update validation display for SARANA category (20% limit)
+        if found_codes:
+            sarana_percentage = self.get_current_sarana_percentage()
+            self.update_validation_display('sarana', sarana_percentage)
+        else:  # Jika tidak ada data SARANA
+            self.hide_validation_display()
+        
         # Auto-scroll to show the results
         self.canvas.update_idletasks()
         self.canvas.yview_moveto(0.8)
     
+    # Modifikasi method show_alokasi_honor
     def show_alokasi_honor(self):
-        """Menampilkan alokasi honor dengan enhanced display"""
+        """Menampilkan alokasi honor dengan dialog pemilihan jenis sekolah dan validasi"""
         self.set_active_button('honor')
         
+        # Jika belum pernah memilih jenis sekolah, tampilkan dialog
+        if not self.honor_choice_made:
+            self.show_school_type_dialog()
+            return
+        
+        # Jika sudah ada pilihan, langsung tampilkan data dengan validasi
+        self.show_honor_data_with_validation()
+
+    def get_current_honor_percentage(self):
+        """Get current percentage for HONOR category"""
+        try:
+            found_codes = self.main_app.data_processor.get_honor_data()
+            if not found_codes:
+                return 0.0
+            
+            total_honor = sum(self.main_app.data_processor.processed_data[kode]['jumlah'] 
+                            for kode in found_codes)
+            total_budget = self.main_app.data_processor.total_budget
+            
+            if total_budget > 0:
+                return (total_honor / total_budget) * 100
+            return 0.0
+        except:
+            return 0.0
+    
+    def show_school_type_dialog(self):
+        """Show school type selection dialog for HONOR validation"""
+        if self.honor_dialog_window:
+            self.honor_dialog_window.destroy()
+
+        # Buat dialog baru
+        self.honor_dialog_window = tk.Toplevel(self.page_frame)
+        self.honor_dialog_window.title("Pilih Jenis Sekolah")
+        self.honor_dialog_window.geometry("600x350")
+        self.honor_dialog_window.configure(bg='#f8f9fa')
+        self.honor_dialog_window.resizable(False, False)
+
+        # Center the window
+        self.honor_dialog_window.transient(self.main_app.root)
+        self.honor_dialog_window.grab_set()
+        self.honor_dialog_window.update_idletasks()
+        width = self.honor_dialog_window.winfo_width()
+        height = self.honor_dialog_window.winfo_height()
+        x = (self.honor_dialog_window.winfo_screenwidth() // 2) - (width // 2)
+        y = (self.honor_dialog_window.winfo_screenheight() // 2) - (height // 2)
+        self.honor_dialog_window.geometry(f'{width}x{height}+{x}+{y}')
+        self.honor_dialog_window.protocol("WM_DELETE_WINDOW", self.on_school_type_dialog_close)
+
+        # Header
+        header_frame = tk.Frame(self.honor_dialog_window, bg='#fd7e14', height=70)
+        header_frame.pack(fill='x')
+        header_frame.pack_propagate(False)
+        header_label = tk.Label(header_frame,
+                                text="💰 Pilih Jenis Sekolah untuk Validasi HONOR",
+                                font=("Segoe UI", 14, "bold"),
+                                bg='#fd7e14',
+                                fg='white')
+        header_label.pack(expand=True)
+
+        # Konten
+        content_frame = tk.Frame(self.honor_dialog_window, bg='#f8f9fa')
+        content_frame.pack(fill='both', expand=True, padx=30, pady=20)
+
+        desc_label = tk.Label(content_frame,
+                            text="Pilih jenis sekolah untuk menentukan batas persentase honor yang sesuai:",
+                            font=("Segoe UI", 11),
+                            bg='#f8f9fa',
+                            fg='#2c3e50',
+                            wraplength=500,
+                            justify='center')
+        desc_label.pack(pady=(0, 20))
+
+        # Tombol pilihan
+        button_frame = tk.Frame(content_frame, bg='#f8f9fa')
+        button_frame.pack()
+
+        negeri_button = tk.Button(button_frame,
+                                text="🏛️ Sekolah Negeri (20%)",
+                                command=lambda: self.select_school_type('negeri'),
+                                bg='#28a745',
+                                fg='white',
+                                font=("Segoe UI", 12, "bold"),
+                                padx=10, pady=10,
+                                cursor='hand2')
+        negeri_button.pack(pady=5, fill='x')
+
+        swasta_button = tk.Button(button_frame,
+                                text="🏢 Sekolah Swasta (40%)",
+                                command=lambda: self.select_school_type('swasta'),
+                                bg='#007bff',
+                                fg='white',
+                                font=("Segoe UI", 12, "bold"),
+                                padx=10, pady=10,
+                                cursor='hand2')
+        swasta_button.pack(pady=5, fill='x')
+
+        # Footer
+        footer_label = tk.Label(content_frame,
+                                text="💡 Pilihan ini akan digunakan untuk validasi persentase honor sesuai ketentuan juknis.",
+                                font=("Segoe UI", 9, "italic"),
+                                bg='#f8f9fa',
+                                fg='#6c757d',
+                                wraplength=500,
+                                justify='center')
+        footer_label.pack(pady=(20, 0))
+
+    
+    def select_school_type(self, school_type):
+        """Handle school type selection"""
+        self.honor_school_type = school_type
+        self.honor_choice_made = True
+        
+        # Close dialog
+        if self.honor_dialog_window:
+            self.honor_dialog_window.destroy()
+            self.honor_dialog_window = None
+        
+        # Show honor data with validation
+        self.show_honor_data_with_validation()
+
+# BARU: Method untuk menampilkan data honor dengan validasi
+    def show_honor_data_with_validation(self):
+        """Show honor data with validation based on school type"""
         found_codes = self.main_app.data_processor.get_honor_data()
         
-        output = FormatUtils.create_table_display("💰 HONOR (07.12)", 
-                                         self.main_app.data_processor.processed_data, 
-                                         found_codes,
-                                         self.main_app.data_processor.total_budget,
-                                         self.main_app.data_processor.school_name)
+        # Create display text with school type info
+        school_type_text = "Sekolah Negeri (20%)" if self.honor_school_type == 'negeri' else "Sekolah Swasta (40%)"
+        output = FormatUtils.create_table_display(f"💰 HONOR (07.12) - {school_type_text}", 
+                                        self.main_app.data_processor.processed_data, 
+                                        found_codes,
+                                        self.main_app.data_processor.total_budget,
+                                        self.main_app.data_processor.school_name)
         
         self.output_text.delete("1.0", tk.END)
         self.output_text.insert("1.0", output)
         
+        # Update validation display for HONOR category
+        if found_codes:
+            honor_percentage = self.get_current_honor_percentage()
+            self.update_validation_display('honor', honor_percentage)
+        else:
+            self.hide_validation_display()
+        
         # Auto-scroll to show the results
         self.canvas.update_idletasks()
         self.canvas.yview_moveto(0.8)
+
+# BARU: Method untuk menangani penutupan dialog tanpa pilihan
+    def on_school_type_dialog_close(self):
+        """Handle dialog close without selection - return to previous state"""
+        if self.honor_dialog_window:
+            self.honor_dialog_window.destroy()
+            self.honor_dialog_window = None
+        
+        # Reset active button if no choice was made
+        if not self.honor_choice_made:
+            self.active_button = None
+            self.category_buttons['honor'].config(bg='#fd7e14', relief='flat', bd=0)
