@@ -14,6 +14,7 @@ import sys
 import os
 import threading
 import time
+import tkinter.font as tkFont
 
 
 # Add parent directory to path to import backend modules
@@ -73,6 +74,145 @@ class RKASPage(BasePage):  # Inherit dari BasePage
         
         # Build the actual page content
         self.setup_ui()
+
+         # Footer section
+        self.create_footer()
+    
+    def create_footer(self):
+        """Create footer section with modern design matching the theme - FIXED VERSION"""
+        # PERBAIKAN: Pastikan footer dibuat dengan benar dan semua elemen ditampilkan
+        
+        # Footer container dengan background gelap
+        footer_frame = tk.Frame(self.scrollable_frame, bg='#2c3e50')
+        footer_frame.pack(fill='x', pady=(40, 0))
+        
+        # PERBAIKAN: Jangan gunakan pack_propagate(False) yang bisa menyembunyikan konten
+        # footer_frame.pack_propagate(False)
+        
+        # Footer content container dengan padding yang cukup
+        footer_content = tk.Frame(footer_frame, bg='#2c3e50')
+        footer_content.pack(fill='both', expand=True, padx=60, pady=25)
+        
+        # Top section dengan app info dan links
+        footer_top = tk.Frame(footer_content, bg='#2c3e50')
+        footer_top.pack(fill='x', pady=(0, 15))
+        
+        # Left side - App information
+        footer_left = tk.Frame(footer_top, bg='#2c3e50')
+        footer_left.pack(side='left', fill='both', expand=True)
+        
+        app_name_footer = tk.Label(
+            footer_left,
+            text="SIKELAR",
+            font=tkFont.Font(family="Segoe UI", size=16, weight="bold"),
+            bg='#2c3e50',
+            fg='#ffffff'
+        )
+        app_name_footer.pack(anchor='w')
+        
+        app_desc_footer = tk.Label(
+            footer_left,
+            text="Sistem Informasi Pengelompokan Anggaran dan Rekening",
+            font=tkFont.Font(family="Segoe UI", size=10),
+            bg='#2c3e50',
+            fg='#bdc3c7'
+        )
+        app_desc_footer.pack(anchor='w', pady=(2, 0))
+        
+        # Right side - Quick links
+        footer_right = tk.Frame(footer_top, bg='#2c3e50')
+        footer_right.pack(side='right')
+        
+        links_title = tk.Label(
+            footer_right,
+            text="Menu Cepat",
+            font=tkFont.Font(family="Segoe UI", size=12, weight="bold"),
+            bg='#2c3e50',
+            fg='#ffffff'
+        )
+        links_title.pack(anchor='e')
+        
+        # Quick links container
+        links_container = tk.Frame(footer_right, bg='#2c3e50')
+        links_container.pack(anchor='e', pady=(5, 0))
+        
+        # RKAS dan BKU link
+        rkas_link = tk.Label(
+            links_container,
+            text="• RKAS dan BKU",
+            font=tkFont.Font(family="Segoe UI", size=10),
+            bg='#2c3e50',
+            fg='#4dabf7',
+            cursor='hand2'
+        )
+        rkas_link.pack(anchor='e')
+        
+        # Pengesahan link
+        pengesahan_link = tk.Label(
+            links_container,
+            text="• Pengesahan",
+            font=tkFont.Font(family="Segoe UI", size=10),
+            bg='#2c3e50',
+            fg='#7c3aed',
+            cursor='hand2'
+        )
+        pengesahan_link.pack(anchor='e', pady=(2, 0))
+        
+        # Make links clickable
+        rkas_link.bind('<Button-1>', lambda e: self.main_app.show_tool_page('RKAS dan BKU'))
+        pengesahan_link.bind('<Button-1>', lambda e: self.main_app.show_tool_page('Pengesahan'))
+        
+        # Add hover effects to links
+        self.add_link_hover_effect(rkas_link, '#4dabf7', '#74c0fc')
+        self.add_link_hover_effect(pengesahan_link, '#7c3aed', '#9775fa')
+        
+        # Bottom section dengan copyright dan version
+        footer_bottom = tk.Frame(footer_content, bg='#2c3e50')
+        footer_bottom.pack(fill='x')
+        
+        # Separator line
+        separator = tk.Frame(footer_bottom, bg='#34495e', height=1)
+        separator.pack(fill='x', pady=(0, 10))
+        
+        # Bottom content
+        footer_bottom_content = tk.Frame(footer_bottom, bg='#2c3e50')
+        footer_bottom_content.pack(fill='x')
+        
+        # Copyright text
+        copyright_text = tk.Label(
+            footer_bottom_content,
+            text="© 2024 SIKELAR - Sistem Informasi Pengelompokan Anggaran dan Rekening",
+            font=tkFont.Font(family="Segoe UI", size=9),
+            bg='#2c3e50',
+            fg='#95a5a6'
+        )
+        copyright_text.pack(side='left')
+        
+        # Version info
+        version_text = tk.Label(
+            footer_bottom_content,
+            text="Versi 1.0",
+            font=tkFont.Font(family="Segoe UI", size=9),
+            bg='#2c3e50',
+            fg='#95a5a6'
+        )
+        version_text.pack(side='right')
+        
+        # PERBAIKAN: Pastikan footer memiliki tinggi minimum yang cukup
+        footer_frame.configure(height=120)
+        footer_frame.update_idletasks()
+        
+
+    def add_link_hover_effect(self, widget, normal_color, hover_color):
+        """Add hover effect to footer links"""
+        def on_enter(e):
+            widget.configure(fg=hover_color)
+            
+        def on_leave(e):
+            widget.configure(fg=normal_color)
+            
+        widget.bind('<Enter>', on_enter)
+        widget.bind('<Leave>', on_leave)    
 
     def on_show(self):
         """Called when RKAS page is shown"""
