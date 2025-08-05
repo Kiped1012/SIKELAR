@@ -1,6 +1,6 @@
 """
 Combined Data processing module for SIKELAR application
-Handles parsing and processing of RKAS and BKU data
+Handles parsing and processing of RKAS and BKU data - FIXED VERSION
 """
 
 import re
@@ -12,7 +12,7 @@ from .bku_processor import BKUDataProcessor
 class BOSDataProcessor:
     """
     Main Data processor for SIKELAR application
-    Combines RKAS and BKU data processing
+    Combines RKAS and BKU data processing - FIXED VERSION
     """
     def __init__(self):
         self.rkas_processor = RKASDataProcessor()
@@ -289,9 +289,12 @@ class BOSDataProcessor:
             raise ValueError(f"Gagal memproses file Excel: {str(e)}")
     
     def parse_rkas_data(self):
-        """Parsing data dari input text format tabel RKAS"""
+        """Parsing data dari input text format tabel RKAS - VERSI DIPERBAIKI UNTUK HONOR"""
         lines = self.raw_data.split('\n')
-        processed_lines = set()  # Track baris yang sudah diproses
+        processed_lines = set()
+        
+        print(f"Debug: Processing {len(lines)} lines")
+        print(f"Debug: Target codes: {self.target_codes}")
         
         # Cari total anggaran dari header
         for line in lines:
@@ -299,9 +302,13 @@ class BOSDataProcessor:
                 total_match = re.search(r'Rp\s*([\d.,]+)', line)
                 if total_match:
                     self.total_budget = FormatUtils.clean_number(total_match.group(1))
+                    print(f"Debug: Found total budget: {self.total_budget}")
                     break
         
-        # Parse data baris per baris
+        # PERBAIKAN KHUSUS: Untuk HONOR (07.12), kelompokkan berdasarkan no_pro, no_rek, dan uraian
+        self._parse_honor_data_grouped(lines)
+        
+        # Parse data baris per baris untuk kode lainnya
         i = 0
         while i < len(lines):
             line = lines[i].strip()
@@ -309,25 +316,33 @@ class BOSDataProcessor:
                 i += 1
                 continue
             
-            # Cek apakah ini adalah kode standar yang terpisah - HANYA untuk kode yang diinginkan
+            print(f"Debug: Processing line {i}: {line}")
+            
+            # Skip jika ini adalah data HONOR karena sudah diproses secara terpisah
+            if '07.12' in line:
+                i += 1
+                continue
+            
+            # Pattern matching untuk kode NON-HONOR
             kode_found = None
             for target_code in self.target_codes:
-                # Pattern untuk kode yang berdiri sendiri
-                if target_code == '07.12':
-                    pattern = r'^07\.12\.'
-                else:
-                    pattern = rf'^{re.escape(target_code)}\.'
+                if target_code == '07.12':  # Skip honor, sudah diproses
+                    continue
+                    
+                pattern = rf'^{re.escape(target_code)}\.'
                 
                 if re.match(pattern, line):
                     kode_found = target_code
+                    print(f"Debug: Found separate code line: {kode_found}")
                     break
             
             if kode_found:
-                processed_lines.add(i)  # Tandai baris ini sudah diproses
+                processed_lines.add(i)
                 
                 if i + 1 < len(lines):
                     uraian_line = lines[i + 1].strip()
-                    processed_lines.add(i + 1)  # Tandai baris uraian sudah diproses
+                    processed_lines.add(i + 1)
+                    print(f"Debug: Uraian line: {uraian_line}")
                     
                     volume = "0"
                     satuan = "-"
@@ -343,16 +358,8 @@ class BOSDataProcessor:
                             potential_jumlah = FormatUtils.clean_number(jumlah_match.group(1))
                             if potential_jumlah > jumlah:
                                 jumlah = potential_jumlah
-                                processed_lines.add(j)  # Tandai baris dengan nilai sudah diproses
-                        
-                        volume_match = re.match(r'^(\d+)', check_line)
-                        if volume_match:
-                            volume = volume_match.group(1)
-                            processed_lines.add(j)
-                        
-                        if re.match(r'^(buku|unit|orang|buah|lusin|meter|rim|botol|jam)', check_line.lower()):
-                            satuan = check_line
-                            processed_lines.add(j)
+                                processed_lines.add(j)
+                                print(f"Debug: Found amount in separate line: {jumlah}")
                     
                     # Jika tidak ada nilai terpisah, cari di uraian
                     if jumlah == 0:
@@ -360,6 +367,7 @@ class BOSDataProcessor:
                         if jumlah_match:
                             jumlah = FormatUtils.clean_number(jumlah_match.group(1))
                             uraian_line = re.sub(r'Rp\s*[\d.,]+', '', uraian_line).strip()
+                            print(f"Debug: Found amount in uraian line: {jumlah}")
                     
                     if jumlah > 0:
                         self.processed_data[kode_found] = {
@@ -369,58 +377,179 @@ class BOSDataProcessor:
                             'harga_satuan': harga_satuan,
                             'jumlah': jumlah
                         }
+                        print(f"Debug: Added {kode_found}: {uraian_line} = Rp {jumlah:,}")
             
-            # Cek apakah ini adalah kode standar dalam satu baris - HANYA untuk kode yang diinginkan
+            # Logic untuk kode dalam satu baris - NON-HONOR
             elif i not in processed_lines:
                 kode_found = None
+                data_part = None
+                
                 for target_code in self.target_codes:
-                    if target_code == '07.12':
-                        pattern = r'^07\.12\.\s+(.+)'
-                    else:
-                        pattern = rf'^{re.escape(target_code)}\.\s+(.+)'
+                    if target_code == '07.12':  # Skip honor
+                        continue
+                        
+                    pattern = rf'^{re.escape(target_code)}\.\s+(.+)'
                     
                     match = re.match(pattern, line)
                     if match:
                         kode_found = target_code
                         data_part = match.group(1)
+                        print(f"Debug: Found inline code: {kode_found} with data: {data_part}")
                         break
                 
-                if kode_found:
-                    processed_lines.add(i)  # Tandai baris ini sudah diproses
+                if kode_found and data_part:
+                    processed_lines.add(i)
                     
-                    # Hanya proses jika kode belum ada di processed_data
                     if kode_found not in self.processed_data:
-                        # Untuk kode 07.12, pastikan bukan sub-kode
-                        if kode_found == '07.12':
-                            if not re.match(r'^\d{2}\.', data_part):
-                                jumlah_matches = list(re.finditer(r'Rp\s*([\d.,]+)', data_part))
-                                if jumlah_matches:
-                                    jumlah = FormatUtils.clean_number(jumlah_matches[-1].group(1))
-                                    uraian = re.split(r'\d+\s+\w+\s+Rp|\d+\s+Rp|Rp', data_part)[0].strip()
-                                    
-                                    self.processed_data[kode_found] = {
-                                        'uraian': uraian,
-                                        'volume': "0",
-                                        'satuan': "-",
-                                        'harga_satuan': 0,
-                                        'jumlah': jumlah
-                                    }
-                        else:
-                            jumlah_matches = list(re.finditer(r'Rp\s*([\d.,]+)', data_part))
-                            if jumlah_matches:
-                                jumlah = FormatUtils.clean_number(jumlah_matches[-1].group(1))
-                                uraian = re.split(r'\d+\s+\w+\s+Rp|\d+\s+Rp|Rp', data_part)[0].strip()
-                                
-                                self.processed_data[kode_found] = {
-                                    'uraian': uraian,
-                                    'volume': "0",
-                                    'satuan': "-",
-                                    'harga_satuan': 0,
-                                    'jumlah': jumlah
-                                }
+                        jumlah_matches = list(re.finditer(r'Rp\s*([\d.,]+)', data_part))
+                        if jumlah_matches:
+                            jumlah = FormatUtils.clean_number(jumlah_matches[-1].group(1))
+                            # Clean uraian dengan menghapus bagian harga
+                            uraian = re.split(r'\d+\s+\w+\s+Rp|\d+\s+Rp|Rp', data_part)[0].strip()
+                            
+                            # Jika uraian kosong, ambil dari awal data_part
+                            if not uraian:
+                                uraian = re.sub(r'Rp\s*[\d.,]+.*$', '', data_part).strip()
+                            
+                            self.processed_data[kode_found] = {
+                                'uraian': uraian,
+                                'volume': "0",
+                                'satuan': "-",
+                                'harga_satuan': 0,
+                                'jumlah': jumlah
+                            }
+                            print(f"Debug: Added inline {kode_found}: {uraian} = Rp {jumlah:,}")
             
             i += 1
-    
+        
+        # Debug: Print final results
+        print(f"Debug: Final processed_data keys: {list(self.processed_data.keys())}")
+        for kode, data in self.processed_data.items():
+            print(f"Debug: {kode} = {data['uraian']} = Rp {data['jumlah']:,}")
+
+    def _parse_honor_data_grouped(self, lines):
+        """
+        PERBAIKAN: Parse data HONOR (07.12) dengan pengelompokan berdasarkan no_pro, no_rek, dan uraian
+        Hanya membaca kode utama 07.12 atau 07.12. untuk uraian, sub-kode hanya untuk total
+        """
+        honor_items = []
+        total_honor = 0
+        main_uraian = ""
+        
+        # Cari semua baris yang mengandung 07.12
+        for i, line in enumerate(lines):
+            line = line.strip()
+            
+            # Pattern untuk menangkap data HONOR - HANYA KODE UTAMA 07.12
+            honor_patterns = [
+                # Format: 07.12. Uraian ... Rp amount (dengan titik)
+                r'^(07\.12\.)\s+(.+?)\s+Rp\s*([\d.,]+)',
+                # Format: 07.12 Uraian ... Rp amount (tanpa titik)
+                r'^(07\.12)\s+(.+?)\s+Rp\s*([\d.,]+)',
+                # Format: 07.12. (kode saja dengan titik)
+                r'^(07\.12\.)\s*$',
+                # Format: 07.12 (kode saja tanpa titik)
+                r'^(07\.12)\s*$'
+            ]
+            
+            for pattern in honor_patterns:
+                match = re.search(pattern, line)
+                if match:
+                    if len(match.groups()) == 3:  # Format lengkap dengan uraian dan amount
+                        kode = match.group(1)
+                        uraian = match.group(2).strip()
+                        amount = FormatUtils.clean_number(match.group(3))
+                        
+                        # Pastikan ini adalah kode utama 07.12 atau 07.12. (bukan sub-kode)
+                        if kode in ['07.12', '07.12.']:
+                            main_uraian = uraian
+                            print(f"Debug: Found main HONOR uraian: {uraian}")
+                        
+                        honor_items.append({
+                            'kode': kode,
+                            'uraian': uraian,
+                            'jumlah': amount
+                        })
+                        total_honor += amount
+                        
+                        print(f"Debug: Found HONOR item: {kode} - {uraian} = Rp {amount:,}")
+                        
+                    elif len(match.groups()) == 1:  # Format kode saja
+                        kode = match.group(1)
+                        
+                        # Pastikan ini adalah kode utama 07.12 atau 07.12.
+                        if kode in ['07.12', '07.12.']:
+                            # Cari uraian dan amount di baris berikutnya
+                            if i + 1 < len(lines):
+                                next_line = lines[i + 1].strip()
+                                
+                                # Cari amount di beberapa baris berikutnya
+                                amount = 0
+                                uraian = next_line
+                                
+                                for j in range(i + 1, min(i + 5, len(lines))):
+                                    check_line = lines[j].strip()
+                                    amount_match = re.search(r'Rp\s*([\d.,]+)', check_line)
+                                    if amount_match:
+                                        amount = FormatUtils.clean_number(amount_match.group(1))
+                                        if j == i + 1:  # Amount di baris uraian
+                                            uraian = re.sub(r'Rp\s*[\d.,]+', '', check_line).strip()
+                                        break
+                                
+                                if amount > 0:
+                                    main_uraian = uraian
+                                    
+                                    honor_items.append({
+                                        'kode': kode,
+                                        'uraian': uraian,
+                                        'jumlah': amount
+                                    })
+                                    total_honor += amount
+                                    
+                                    print(f"Debug: Found main HONOR item (separate): {kode} - {uraian} = Rp {amount:,}")
+                    break
+            
+            # Cari sub-kode HONOR untuk menambahkan ke total (tanpa mengambil uraian)
+            sub_honor_patterns = [
+                # Format: 07.12.01 atau 07.12.01. Uraian ... Rp amount
+                r'^(07\.12\.0[1-9]\.?)\s+(.+?)\s+Rp\s*([\d.,]+)',
+                # Format: 07.12.XX atau 07.12.XX. Uraian ... Rp amount
+                r'^(07\.12\.\d{2,}\.?)\s+(.+?)\s+Rp\s*([\d.,]+)',
+                # Format: 07.12.XX.XX atau 07.12.XX.XX. Uraian ... Rp amount  
+                r'^(07\.12\.\d+\.\d+\.?)\s+(.+?)\s+Rp\s*([\d.,]+)'
+            ]
+            
+            for pattern in sub_honor_patterns:
+                match = re.search(pattern, line)
+                if match:
+                    sub_kode = match.group(1)
+                    sub_uraian = match.group(2).strip()
+                    sub_amount = FormatUtils.clean_number(match.group(3))
+                    
+                    # Tambahkan ke total tetapi jangan ambil uraiannya
+                    total_honor += sub_amount
+                    
+                    print(f"Debug: Found sub-HONOR item: {sub_kode} - {sub_uraian} = Rp {sub_amount:,}")
+                    break
+        
+        # Gunakan uraian dari kode 07.12 utama
+        if honor_items or total_honor > 0:
+            # Jika tidak ada main_uraian, gunakan default
+            if not main_uraian:
+                main_uraian = "Pembayaran Honor"
+            
+            self.processed_data['07.12'] = {
+                'uraian': main_uraian,
+                'volume': "0",
+                'satuan': "-",
+                'harga_satuan': 0,
+                'jumlah': total_honor
+            }
+        
+        print(f"Debug: Final HONOR uraian: {main_uraian}")
+        print(f"Debug: Total HONOR amount: Rp {total_honor:,}")
+        print(f"Debug: Found {len(honor_items)} main HONOR items")
+
     def calculate_total_budget(self):
         """Hitung total budget dari semua item yang diparsing"""
         if self.total_budget == 0:
@@ -467,5 +596,3 @@ class BOSDataProcessor:
         self.processed_data = {}
         self.total_budget = 0
         self.school_name = ""
-
-    
