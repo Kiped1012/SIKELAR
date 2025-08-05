@@ -512,12 +512,15 @@ class RKASPage(BasePage):  # Inherit dari BasePage
         self._create_bku_placeholder()
 
     def _create_bku_placeholder(self):
-        """Create placeholder content for BKU section - Updated"""
+        """Create placeholder content for BKU section - FIXED untuk include Belanja Jasa"""
         # Check if BKU data is available
         if hasattr(self.processor, 'bku_data_available') and self.processor.bku_data_available:
             # Check if current active tab supports BKU display
             current_tab = self.active_tab or "Belanja Persediaan"
-            if current_tab in ["Belanja Persediaan", "Pemeliharaan", "Perjalanan Dinas", "Peralatan", "Aset Tetap", "Jasa"]:
+            # FIXED: tambahkan "Belanja Jasa" ke dalam list kategori yang didukung
+            supported_categories = ["Belanja Persediaan", "Pemeliharaan", "Perjalanan Dinas", "Peralatan", "Aset Tetap", "Belanja Jasa"]
+            
+            if current_tab in supported_categories:
                 # Show instruction to select triwulan
                 instruction_label = tk.Label(self.bku_frame, 
                                         text="Pilih Triwulan untuk melihat\ndata realisasi BKU", 
@@ -546,7 +549,7 @@ class RKASPage(BasePage):  # Inherit dari BasePage
             placeholder_label.pack(expand=True)
 
     def on_triwulan_changed(self, event=None):
-        """Handle triwulan dropdown selection change - UPDATED untuk include ringkasan"""
+        """Handle triwulan dropdown selection change - FIXED untuk include semua kategori"""
         selected = self.selected_triwulan.get()
         print(f"Triwulan dipilih: {selected}")
         
@@ -557,20 +560,23 @@ class RKASPage(BasePage):  # Inherit dari BasePage
                 self._display_bku_summary_for_triwulan(selected)
             return
         
-        # Existing code for other categories
-        if self.active_tab in ["Belanja Persediaan", "Pemeliharaan", "Perjalanan Dinas", "Peralatan", "Aset Tetap", "Jasa"]:
+        # FIXED: Update untuk semua kategori yang mendukung BKU, termasuk Jasa
+        supported_categories = ["Belanja Persediaan", "Pemeliharaan", "Perjalanan Dinas", "Peralatan", "Aset Tetap", "Belanja Jasa"]
+        
+        if self.active_tab in supported_categories:
+            # FIXED: Gunakan mapping yang konsisten
             category_map = {
                 "Belanja Persediaan": "Belanja Persediaan",
-                "Pemeliharaan": "Pemeliharaan",
-                "Perjalanan Dinas": "Perjalanan Dinas", 
+                "Pemeliharaan": "Pemeliharaan", 
+                "Perjalanan Dinas": "Perjalanan Dinas",
                 "Peralatan": "Peralatan",
                 "Aset Tetap": "Aset Tetap",
-                "Jasa": "Jasa"
+                "Belanja Jasa": "Belanja Jasa"  # FIXED: gunakan nama yang sama
             }
             self._display_bku_for_category(category_map[self.active_tab])
 
     def _display_bku_for_category(self, category):
-        """Display BKU data for specific category with appropriate summary format"""
+        """Display BKU data for specific category with appropriate summary format - FIXED"""
         # Clear current BKU content
         for widget in self.bku_frame.winfo_children():
             widget.destroy()
@@ -587,25 +593,19 @@ class RKASPage(BasePage):  # Inherit dari BasePage
         selected_triwulan = self.selected_triwulan.get()
         
         # Get BKU data based on category dan panggil method yang sesuai
-        if category == "Jasa":
+        if category == "Belanja Jasa":  # FIXED: gunakan nama yang konsisten
             bku_data = self.processor.get_bku_belanja_jasa_by_triwulan(selected_triwulan)
             title = f"Realisasi Belanja Jasa (5.1.02.02) - {selected_triwulan}"
             if bku_data:
                 # KHUSUS JASA - gunakan method dengan breakdown honor
                 self._display_bku_jasa_data(selected_triwulan, bku_data, title)
             else:
-                # No data handling
-                no_data_label = tk.Label(self.bku_frame, 
-                                    text=f"Tidak ada data realisasi\nuntuk {selected_triwulan}", 
-                                    font=('Arial', 14, 'bold'), 
-                                    fg='#e74c3c', bg='#ffffff', pady=30)
-                no_data_label.pack(expand=True)
-                self._show_triwulan_status(selected_triwulan)
+                # No data handling untuk Jasa
+                self._handle_no_bku_data(selected_triwulan)
         elif category == "Belanja Persediaan":
             bku_data = self.processor.get_bku_belanja_persediaan_by_triwulan(selected_triwulan)
             title = f"Realisasi Belanja Persediaan (5.1.02.01) - {selected_triwulan}"
             if bku_data:
-                # KATEGORI LAIN - gunakan method generic tanpa breakdown honor
                 self._display_bku_data_generic(selected_triwulan, bku_data, title)
             else:
                 self._handle_no_bku_data(selected_triwulan)
@@ -1152,7 +1152,7 @@ class RKASPage(BasePage):  # Inherit dari BasePage
         school_label.pack(anchor='w', pady=(10, 5))
 
     def _display_bku_summary_for_triwulan(self, triwulan):
-        """Display BKU summary data untuk triwulan tertentu - FIXED VERSION"""
+        """Display BKU summary data untuk triwulan tertentu - ENHANCED VERSION dengan ringkasan tambahan"""
         # Clear current BKU content
         for widget in self.bku_frame.winfo_children():
             widget.destroy()
@@ -1212,7 +1212,14 @@ class RKASPage(BasePage):  # Inherit dari BasePage
         tree.column('Kategori', width=320, anchor='w')
         tree.column('Jumlah (Rp)', width=160, anchor='w')
         
-        # Data ringkasan BKU dengan background color info (mirip dengan RKAS)
+        # ENHANCED: Calculate additional summary data first
+        total_realisasi_sampai_saat_ini = self._calculate_total_realisasi_sampai_saat_ini(triwulan)
+        total_pagu_rkas = self.processor.total_penerimaan
+        total_sisa_dana_1_tahun = total_pagu_rkas - total_realisasi_sampai_saat_ini
+        total_sisa_dana_sampai_saat_ini = (total_pagu_rkas * 0.5) - total_realisasi_sampai_saat_ini
+        persentase_realisasi = (total_realisasi_sampai_saat_ini / total_pagu_rkas * 100) if total_pagu_rkas > 0 else 0
+        
+        # Data ringkasan BKU dengan informasi tambahan terintegrasi
         ringkasan_data = [
             ("BELANJA OPERASI", summary_data['total_belanja_operasi_bku'], True),
             ("  BELANJA HONOR", summary_data['total_honor_bku'], False),
@@ -1223,21 +1230,46 @@ class RKASPage(BasePage):  # Inherit dari BasePage
             ("BELANJA MODAL", summary_data['belanja_modal_bku'], True),
             ("  PERALATAN DAN MESIN", summary_data['total_peralatan_bku'], False),
             ("  ASET TETAP LAINNYA", summary_data['total_aset_tetap_bku'], False),
-            ("TOTAL REALISASI", summary_data['total_realisasi'], True)
+            ("TOTAL REALISASI", summary_data['total_realisasi'], True),
+            # ENHANCED: Add separator and additional summary info
+            ("", "", False),  # Empty row as separator
+            (f"TOTAL REALISASI SAMPAI SAAT INI ({self._get_periode_text(triwulan)})", total_realisasi_sampai_saat_ini, "green"),
+            ("TOTAL SISA DANA BOSP REGULER (1 TAHUN)", total_sisa_dana_1_tahun, "blue"),
+            ("TOTAL SISA DANA BOSP REGULER SAMPAI SAAT INI (50%)", total_sisa_dana_sampai_saat_ini, "purple"),
+            ("PERSENTASE REALISASI DANA BOSP SAMPAI SAAT INI", f"{persentase_realisasi:.2f}%", "orange")
         ]
         
-        # Insert data into table
-        for kategori, jumlah, is_highlight in ringkasan_data:
-            formatted_jumlah = FormatUtils.format_currency(jumlah)
+        # Insert data into table with enhanced styling
+        for kategori, jumlah, style in ringkasan_data:
+            # Handle empty separator row
+            if kategori == "" and jumlah == "":
+                item_id = tree.insert('', 'end', values=("", ""))
+                continue
+            
+            # Format value based on type
+            if isinstance(jumlah, str):  # For percentage
+                formatted_jumlah = jumlah
+            else:  # For currency values
+                formatted_jumlah = FormatUtils.format_currency(jumlah)
+            
             item_id = tree.insert('', 'end', values=(kategori, formatted_jumlah))
             
-            # Set background color for highlighted items
-            if is_highlight:
-                tree.set(item_id, 'Kategori', kategori)
-                tree.set(item_id, 'Jumlah (Rp)', formatted_jumlah)
-                # Configure tag for red background for BKU
+            # Set background color and styling based on style type
+            if style == True:  # Original highlight items (red background)
                 tree.tag_configure('highlight', background='#e74c3c', foreground='white')
                 tree.item(item_id, tags=('highlight',))
+            elif style == "green":
+                tree.tag_configure('green_highlight', background='#27ae60', foreground='white')
+                tree.item(item_id, tags=('green_highlight',))
+            elif style == "blue":
+                tree.tag_configure('blue_highlight', background='#3498db', foreground='white')
+                tree.item(item_id, tags=('blue_highlight',))
+            elif style == "purple":
+                tree.tag_configure('purple_highlight', background='#9b59b6', foreground='white')
+                tree.item(item_id, tags=('purple_highlight',))
+            elif style == "orange":
+                tree.tag_configure('orange_highlight', background='#e67e22', foreground='white')
+                tree.item(item_id, tags=('orange_highlight',))
         
         # Add scrollbar
         scrollbar = ttk.Scrollbar(table_frame, orient='vertical', command=tree.yview)
@@ -1245,19 +1277,51 @@ class RKASPage(BasePage):  # Inherit dari BasePage
         tree.pack(side='left', fill='both', expand=True)
         scrollbar.pack(side='right', fill='y')
         
-        # Summary section
+        # Summary section - simplified since enhanced info is now in table
         summary_frame = tk.Frame(self.bku_frame, bg='#ecf0f1', relief='raised', bd=1)
         summary_frame.pack(fill='x', padx=10, pady=10)
         
-        # School name
+        # School name only
         school_label = tk.Label(summary_frame, 
                             text=f"SEKOLAH {self.processor.nama_sekolah}", 
                             font=('Arial', 10, 'bold'), bg='#ecf0f1', fg='#2c3e50')
-        school_label.pack(anchor='w', pady=(10, 5))
+        school_label.pack(anchor='w', pady=(10, 5), padx=10)
         
         # Update canvas scroll region
         self.bku_frame.update_idletasks()
         self.bku_canvas.configure(scrollregion=self.bku_canvas.bbox("all"))
+
+    def _calculate_total_realisasi_sampai_saat_ini(self, current_triwulan):
+        """Calculate total realisasi from TW1 up to current triwulan"""
+        triwulan_order = ["Triwulan 1", "Triwulan 2", "Triwulan 3", "Triwulan 4"]
+        current_index = triwulan_order.index(current_triwulan)
+        
+        total_realisasi = 0
+        
+        # Sum up realisasi from TW1 to current triwulan
+        for i in range(current_index + 1):
+            triwulan = triwulan_order[i]
+            try:
+                summary_data = self.processor.get_bku_summary_data_by_triwulan(triwulan)
+                if summary_data and summary_data.get('total_realisasi', 0) > 0:
+                    total_realisasi += summary_data['total_realisasi']
+                    print(f"Debug: Added {FormatUtils.format_currency(summary_data['total_realisasi'])} from {triwulan}")
+            except Exception as e:
+                print(f"Debug: Error getting data for {triwulan}: {e}")
+                continue
+        
+        print(f"Debug: Total realisasi sampai {current_triwulan}: {FormatUtils.format_currency(total_realisasi)}")
+        return total_realisasi
+
+    def _get_periode_text(self, triwulan):
+        """Get period text for triwulan"""
+        periode_map = {
+            "Triwulan 1": "Jan-Mar",
+            "Triwulan 2": "Jan-Jun", 
+            "Triwulan 3": "Jan-Sep",
+            "Triwulan 4": "Jan-Des"
+        }
+        return periode_map.get(triwulan, "Tidak dikenal")
 
 
     # Navigation methods - UPDATED with auto BKU display for supported categories
@@ -1276,14 +1340,14 @@ class RKASPage(BasePage):  # Inherit dari BasePage
         self._display_bku_for_category("Belanja Persediaan")
 
     def show_belanja_jasa(self):
-        """Show RKAS data for Belanja Jasa"""
+        """Show RKAS data for Belanja Jasa - FIXED"""
         if not self.processor.belanja_jasa_items:
             messagebox.showwarning("Peringatan", "Data dalam kategori tersebut tidak ada atau file belum diupload!")
             return
         self.display_belanja_jasa_results(self.processor.belanja_jasa_items)
         
-        # Clear BKU section for non-supported categories
-        self._display_bku_for_category("Jasa")
+        # FIXED: gunakan nama kategori yang konsisten 
+        self._display_bku_for_category("Belanja Jasa")
 
     def show_belanja_pemeliharaan(self):
         """Show both RKAS and BKU data for Belanja Pemeliharaan"""
