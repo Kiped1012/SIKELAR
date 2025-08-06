@@ -655,7 +655,7 @@ Wajib menganggarkan honor maksimal {limit}% dari total anggaran sekolah untuk {s
         # Copyright text
         copyright_text = tk.Label(
             footer_bottom_content,
-            text="© 2024 SIKELAR - Sistem Informasi Pengelompokan Anggaran dan Rekening",
+            text="© 2025 SIKELAR - Sistem Informasi Pengelompokan Anggaran dan Rekening",
             font=tkFont.Font(family="Segoe UI", size=9),
             bg='#2c3e50',
             fg='#95a5a6'

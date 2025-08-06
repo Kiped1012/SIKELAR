@@ -189,7 +189,7 @@ class RKASPage(BasePage):  # Inherit dari BasePage
         # Copyright text
         copyright_text = tk.Label(
             footer_bottom_content,
-            text="© 2024 SIKELAR - Sistem Informasi Pengelompokan Anggaran dan Rekening",
+            text="© 2025 SIKELAR - Sistem Informasi Pengelompokan Anggaran dan Rekening",
             font=tkFont.Font(family="Segoe UI", size=9),
             bg='#2c3e50',
             fg='#95a5a6'
@@ -318,10 +318,12 @@ class RKASPage(BasePage):  # Inherit dari BasePage
             return
         
         try:
-            # Create PDF document
+            # Create PDF document with 2cm margins (approximately 56.7 points)
+            # 1 cm = 28.35 points, so 2 cm = 56.7 points
+            margin_2cm = 56.7
             doc = SimpleDocTemplate(file_path, pagesize=A4, 
-                                rightMargin=72, leftMargin=72, 
-                                topMargin=72, bottomMargin=18)
+                                rightMargin=margin_2cm, leftMargin=margin_2cm, 
+                                topMargin=margin_2cm, bottomMargin=margin_2cm)
             
             # Container for PDF elements
             story = []
@@ -332,8 +334,8 @@ class RKASPage(BasePage):  # Inherit dari BasePage
                 'CustomTitle',
                 parent=styles['Heading1'],
                 alignment=TA_CENTER,
-                spaceAfter=30,
-                fontSize=16,
+                spaceAfter=25,
+                fontSize=14,
                 fontName='Helvetica-Bold'
             )
             
@@ -341,8 +343,8 @@ class RKASPage(BasePage):  # Inherit dari BasePage
                 'CustomSubtitle',
                 parent=styles['Heading2'],
                 alignment=TA_CENTER,
-                spaceAfter=20,
-                fontSize=14,
+                spaceAfter=15,
+                fontSize=12,
                 fontName='Helvetica-Bold'
             )
             
@@ -350,15 +352,15 @@ class RKASPage(BasePage):  # Inherit dari BasePage
                 'CustomNormal',
                 parent=styles['Normal'],
                 alignment=TA_LEFT,
-                spaceAfter=10,
-                fontSize=10
+                spaceAfter=8,
+                fontSize=9
             )
             
             # Header
             story.append(Paragraph("LAPORAN RINGKASAN ANGGARAN", title_style))
             story.append(Paragraph(f"SEKOLAH {self.processor.nama_sekolah}", subtitle_style))
             story.append(Paragraph(f"Dicetak pada: {datetime.datetime.now().strftime('%d %B %Y, %H:%M:%S')}", normal_style))
-            story.append(Spacer(1, 20))
+            story.append(Spacer(1, 15))
             
             # RKAS Section
             story.append(Paragraph("RKAS (Rencana Kegiatan dan Anggaran Sekolah)", subtitle_style))
@@ -382,17 +384,19 @@ class RKASPage(BasePage):  # Inherit dari BasePage
                 ['TOTAL ANGGARAN', FormatUtils.format_currency(summary_data['total_anggaran'])]
             ]
             
-            # Create RKAS table
-            rkas_table = Table(rkas_data, colWidths=[4*inch, 2*inch])
+            # Create RKAS table with adjusted width for 2cm margins
+            # With 2cm margins on A4 (21cm width), available width is 17cm ≈ 4.8 inches
+            available_width = 4.8 * inch
+            rkas_table = Table(rkas_data, colWidths=[available_width * 0.7, available_width * 0.3])
             rkas_table.setStyle(TableStyle([
                 ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
                 ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
                 ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
                 ('ALIGN', (1, 0), (1, -1), 'RIGHT'),
                 ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-                ('FONTSIZE', (0, 0), (-1, 0), 12),
+                ('FONTSIZE', (0, 0), (-1, 0), 10),
                 ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
-                ('FONTSIZE', (0, 1), (-1, -1), 10),
+                ('FONTSIZE', (0, 1), (-1, -1), 8),
                 ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
                 ('BACKGROUND', (0, 1), (-1, 1), colors.lightgrey),  # PAGU
                 ('BACKGROUND', (0, 2), (-1, 2), colors.lightgrey),  # BELANJA OPERASI
@@ -406,7 +410,7 @@ class RKASPage(BasePage):  # Inherit dari BasePage
             ]))
             
             story.append(rkas_table)
-            story.append(Spacer(1, 30))
+            story.append(Spacer(1, 20))
             
             # BKU Realisasi Section - All Triwulans
             story.append(Paragraph("REALISASI BKU (Buku Kas Umum)", subtitle_style))
@@ -419,8 +423,8 @@ class RKASPage(BasePage):  # Inherit dari BasePage
                             # Add triwulan subtitle
                             story.append(Paragraph(f"Realisasi {triwulan}", 
                                                 ParagraphStyle('TW_Title', parent=styles['Heading3'], 
-                                                            alignment=TA_LEFT, fontSize=12, 
-                                                            fontName='Helvetica-Bold', spaceAfter=10)))
+                                                            alignment=TA_LEFT, fontSize=11, 
+                                                            fontName='Helvetica-Bold', spaceAfter=8)))
                             
                             # Calculate additional data
                             total_realisasi_sampai_saat_ini = self._calculate_total_realisasi_sampai_saat_ini(triwulan)
@@ -452,17 +456,17 @@ class RKASPage(BasePage):  # Inherit dari BasePage
                                 ['PERSENTASE REALISASI DANA BOSP SAMPAI SAAT INI', f'{persentase_realisasi:.2f}%']
                             ]
                             
-                            # Create BKU table
-                            bku_table = Table(bku_data, colWidths=[4*inch, 2*inch])
+                            # Create BKU table with adjusted width for 2cm margins
+                            bku_table = Table(bku_data, colWidths=[available_width * 0.7, available_width * 0.3])
                             bku_table.setStyle(TableStyle([
                                 ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
                                 ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
                                 ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
                                 ('ALIGN', (1, 0), (1, -1), 'RIGHT'),
                                 ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-                                ('FONTSIZE', (0, 0), (-1, 0), 12),
+                                ('FONTSIZE', (0, 0), (-1, 0), 10),
                                 ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
-                                ('FONTSIZE', (0, 1), (-1, -1), 10),
+                                ('FONTSIZE', (0, 1), (-1, -1), 8),
                                 ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
                                 ('BACKGROUND', (0, 1), (-1, 1), colors.lightcoral),  # BELANJA OPERASI
                                 ('BACKGROUND', (0, 7), (-1, 7), colors.lightcoral),  # BELANJA MODAL
@@ -479,7 +483,7 @@ class RKASPage(BasePage):  # Inherit dari BasePage
                             ]))
                             
                             story.append(bku_table)
-                            story.append(Spacer(1, 20))
+                            story.append(Spacer(1, 15))
                             
                     except Exception as e:
                         print(f"Error processing {triwulan}: {e}")
