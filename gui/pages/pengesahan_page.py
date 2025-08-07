@@ -203,7 +203,7 @@ class PengesahanPage(BasePage):
                                  text="📚 BUKU", 
                                  command=self.show_alokasi_buku, 
                                  state=tk.DISABLED,
-                                 bg='#007bff', 
+                                 bg='#239bc0', 
                                  fg='white', 
                                  font=("Segoe UI", 10, "bold"),
                                  relief='flat', 
@@ -220,7 +220,7 @@ class PengesahanPage(BasePage):
                                    text="🏢 SARANA & PRASARANA", 
                                    command=self.show_alokasi_sarana, 
                                    state=tk.DISABLED,
-                                   bg='#6f42c1', 
+                                   bg="#239bc0", 
                                    fg='white', 
                                    font=("Segoe UI", 10, "bold"),
                                    relief='flat', 
@@ -237,7 +237,7 @@ class PengesahanPage(BasePage):
                                   text="💰 HONOR", 
                                   command=self.show_alokasi_honor, 
                                   state=tk.DISABLED,
-                                  bg='#fd7e14', 
+                                  bg='#239bc0', 
                                   fg='white', 
                                   font=("Segoe UI", 10, "bold"),
                                   relief='flat', 
@@ -368,22 +368,42 @@ class PengesahanPage(BasePage):
         else:
             return  # No validation for other categories
         
-        if percentage <= limit:
-            # Show green checkmark and success message
-            self.status_indicator.config(text="✅", fg='#28a745')
-            self.status_message.config(text=f"Persentase {category_name} mencukupi ({percentage:.2f}%)")
-            self.status_message.pack(side=tk.LEFT, padx=10)
-            self.action_button.pack_forget()
+        # Special logic for 'buku' category (reversed validation)
+        if category == 'buku':
+            if percentage >= limit:
+                # Show green checkmark and success message for buku when >= limit
+                self.status_indicator.config(text="✅", fg='#28a745')
+                self.status_message.config(text=f"Persentase {category_name} mencukupi ({percentage:.2f}%)")
+                self.status_message.pack(side=tk.LEFT, padx=10)
+                self.action_button.pack_forget()
+            else:
+                # Show red warning and action button for buku when < limit
+                self.status_indicator.config(text="⚠️", fg='#dc3545')
+                self.action_button.config(text=f"Lihat Ketentuan {category_name}")
+                self.action_button.pack(side=tk.LEFT, padx=10)
+                self.status_message.pack_forget()
+                
+                # Add hover effects to action button
+                self.action_button.bind("<Enter>", lambda e: self.on_hover(e, '#c82333'))
+                self.action_button.bind("<Leave>", lambda e: self.on_leave(e, '#dc3545'))
         else:
-            # Show red warning and action button
-            self.status_indicator.config(text="⚠️", fg='#dc3545')
-            self.action_button.config(text=f"Lihat Ketentuan {category_name}")
-            self.action_button.pack(side=tk.LEFT, padx=10)
-            self.status_message.pack_forget()
-            
-            # Add hover effects to action button
-            self.action_button.bind("<Enter>", lambda e: self.on_hover(e, '#c82333'))
-            self.action_button.bind("<Leave>", lambda e: self.on_leave(e, '#dc3545'))
+            # Standard logic for other categories (sarana, honor)
+            if percentage <= limit:
+                # Show green checkmark and success message
+                self.status_indicator.config(text="✅", fg='#28a745')
+                self.status_message.config(text=f"Persentase {category_name} mencukupi ({percentage:.2f}%)")
+                self.status_message.pack(side=tk.LEFT, padx=10)
+                self.action_button.pack_forget()
+            else:
+                # Show red warning and action button
+                self.status_indicator.config(text="⚠️", fg='#dc3545')
+                self.action_button.config(text=f"Lihat Ketentuan {category_name}")
+                self.action_button.pack(side=tk.LEFT, padx=10)
+                self.status_message.pack_forget()
+                
+                # Add hover effects to action button
+                self.action_button.bind("<Enter>", lambda e: self.on_hover(e, '#c82333'))
+                self.action_button.bind("<Leave>", lambda e: self.on_leave(e, '#dc3545'))
         
         # Store current validation info for popup
         self.current_validation = {
@@ -448,9 +468,9 @@ class PengesahanPage(BasePage):
         
         # Create appropriate message based on category
         if category == 'buku':
-            message_text = f"""Pengadaan buku melebihi ketentuan juknis yaitu sebesar {percentage:.2f}%. Seharusnya dianggarkan maksimal {limit}%.
+            message_text = f"""Pengadaan buku melebihi ketentuan juknis yaitu sebesar {percentage:.2f}%. Seharusnya dianggarkan minimal {limit}%.
 
-Wajib menganggarkan pengembangan perpustakaan (buku) maksimal {limit}%."""
+Wajib menganggarkan pengembangan perpustakaan (buku) minimal {limit}%."""
         elif category == 'sarana':
             message_text = f"""Pengadaan sarana dan prasarana melebihi ketentuan juknis yaitu sebesar {percentage:.2f}%. Seharusnya dianggarkan maksimal {limit}%.
 
@@ -655,7 +675,7 @@ Wajib menganggarkan honor maksimal {limit}% dari total anggaran sekolah untuk {s
         # Copyright text
         copyright_text = tk.Label(
             footer_bottom_content,
-            text="© 2025 SIKELAR - Sistem Informasi Pengelompokan Anggaran dan Rekening",
+            text="© 2024 SIKELAR - Sistem Informasi Pengelompokan Anggaran dan Rekening",
             font=tkFont.Font(family="Segoe UI", size=9),
             bg='#2c3e50',
             fg='#95a5a6'
@@ -795,9 +815,9 @@ Wajib menganggarkan honor maksimal {limit}% dari total anggaran sekolah untuk {s
         """Set button aktif dengan enhanced visual state"""
         # Reset semua button ke state normal dengan warna yang sudah diperbaiki
         button_colors = {
-            'buku': {'normal': '#007bff', 'active': '#0056b3'},
-            'sarana': {'normal': '#6f42c1', 'active': '#5a2d8f'},
-            'honor': {'normal': '#fd7e14', 'active': '#dc6003'}
+            'buku': {'normal': '#239bc0', 'active': '#239bc0'},
+            'sarana': {'normal': '#239bc0', 'active': '#239bc0'},
+            'honor': {'normal': '#239bc0', 'active': '#239bc0'}
         }
         
         for name, button in self.category_buttons.items():
@@ -826,16 +846,16 @@ Wajib menganggarkan honor maksimal {limit}% dari total anggaran sekolah untuk {s
         
         color_schemes = {
             'buku': {
-                'normal': {'normal': '#007bff', 'hover': '#0056b3'},
-                'active': {'normal': '#0056b3', 'hover': '#004085'}
+                'normal': {'normal': '#239bc0', 'hover': '#239bc0'},
+                'active': {'normal': '#239bc0', 'hover': '#239bc0'}
             },
             'sarana': {
-                'normal': {'normal': '#6f42c1', 'hover': '#5a2d8f'},
-                'active': {'normal': '#5a2d8f', 'hover': '#4a2470'}
+                'normal': {'normal': '#239bc0', 'hover': '#239bc0'},
+                'active': {'normal': '#239bc0', 'hover': '#239bc0'}
             },
             'honor': {
-                'normal': {'normal': '#fd7e14', 'hover': '#dc6003'},
-                'active': {'normal': '#dc6003', 'hover': '#bd5002'}
+                'normal': {'normal': '#239bc0', 'hover': '#239bc0'},
+                'active': {'normal': '#239bc0', 'hover': '#239bc0'}
             }
         }
         
@@ -885,9 +905,9 @@ Wajib menganggarkan honor maksimal {limit}% dari total anggaran sekolah untuk {s
         
         # Reset button states dengan warna yang sudah diperbaiki
         button_colors = {
-            'buku': '#007bff',
-            'sarana': '#6f42c1', 
-            'honor': '#fd7e14'
+            'buku': '#239bc0',
+            'sarana': '#239bc0', 
+            'honor': '#239bc0'
         }
         
         for name, button in self.category_buttons.items():
@@ -925,9 +945,9 @@ Wajib menganggarkan honor maksimal {limit}% dari total anggaran sekolah untuk {s
             
             # Enable semua button dengan warna yang sudah diperbaiki
             button_colors = {
-                'buku': '#007bff',
-                'sarana': '#6f42c1',
-                'honor': '#fd7e14'
+                'buku': '#239bc0',
+                'sarana': '#239bc0',
+                'honor': '#239bc0'
             }
             
             for name, button in self.category_buttons.items():
@@ -958,9 +978,9 @@ Wajib menganggarkan honor maksimal {limit}% dari total anggaran sekolah untuk {s
         """Menampilkan ringkasan data dengan enhanced formatting"""
         self.active_button = None
         button_colors = {
-            'buku': '#007bff',
-            'sarana': '#6f42c1',
-            'honor': '#fd7e14'
+            'buku': '#239bc0',
+            'sarana': '#239bc0',
+            'honor': '#239bc0'
         }
         
         for name, button in self.category_buttons.items():
@@ -1200,4 +1220,4 @@ Wajib menganggarkan honor maksimal {limit}% dari total anggaran sekolah untuk {s
         # Reset active button if no choice was made
         if not self.honor_choice_made:
             self.active_button = None
-            self.category_buttons['honor'].config(bg='#fd7e14', relief='flat', bd=0)
+            self.category_buttons['honor'].config(bg='#239bc0', relief='flat', bd=0)
