@@ -633,7 +633,7 @@ Wajib menganggarkan honor maksimal {limit}% dari total anggaran sekolah untuk {s
         # RKAS dan BKU link
         rkas_link = tk.Label(
             links_container,
-            text="• RKAS dan BKU",
+            text="• Rekon",
             font=tkFont.Font(family="Segoe UI", size=10),
             bg='#2c3e50',
             fg='#4dabf7',
@@ -653,7 +653,7 @@ Wajib menganggarkan honor maksimal {limit}% dari total anggaran sekolah untuk {s
         pengesahan_link.pack(anchor='e', pady=(2, 0))
         
         # Make links clickable
-        rkas_link.bind('<Button-1>', lambda e: self.main_app.show_tool_page('RKAS dan BKU'))
+        rkas_link.bind('<Button-1>', lambda e: self.main_app.show_tool_page('Rekon'))
         pengesahan_link.bind('<Button-1>', lambda e: self.main_app.show_tool_page('Pengesahan'))
         
         # Add hover effects to links
