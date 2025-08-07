@@ -19,8 +19,8 @@ class RKASDataProcessor:
             'belanja_jasa': ['5.1.02.02'],  # Belanja Jasa
             'belanja_pemeliharaan': ['5.1.02.03'],  # Belanja Pemeliharaan
             'belanja_perjalanan': ['5.1.02.04'],  # Belanja Perjalanan Dinas
-            'peralatan': ['5.2.02'],  # Peralatan dan Mesin
-            'aset_tetap_lainnya': ['5.2.04', '5.2.05']  # Aset Tetap Lainnya
+            'peralatan': ['5.2.02', '5.2.04'],  # Peralatan dan Mesin - UBAH INI
+            'aset_tetap_lainnya': ['5.2.05']  # Aset Tetap Lainnya - UBAH INI
         }
 
     def reset_data(self):
@@ -203,19 +203,19 @@ class RKASDataProcessor:
 
     def extract_peralatan_data(self, sheet):
         """Ekstrak data peralatan berdasarkan kode rekening di kolom D-F (merged) - STRICT VERSION"""
-        target_code = '5.2.02'
-        found_items = self._extract_items_by_code(sheet, target_code)
-        self.peralatan_items = self._filter_duplicate_items(found_items)
-
-    def extract_aset_tetap_data(self, sheet):
-        """Ekstrak data aset tetap lainnya berdasarkan kode rekening di kolom D-F (merged) - STRICT VERSION"""
-        target_codes = ['5.2.04', '5.2.05']
+        target_codes = ['5.2.02', '5.2.04']  # UBAH INI
         found_items = []
         
         for target_code in target_codes:
             items = self._extract_items_by_code(sheet, target_code)
             found_items.extend(items)
         
+        self.peralatan_items = self._filter_duplicate_items(found_items)
+
+    def extract_aset_tetap_data(self, sheet):
+        """Ekstrak data aset tetap lainnya berdasarkan kode rekening di kolom D-F (merged) - STRICT VERSION"""
+        target_code = '5.2.05'  # UBAH INI
+        found_items = self._extract_items_by_code(sheet, target_code)
         self.aset_tetap_items = self._filter_duplicate_items(found_items)
 
     def _extract_items_by_code(self, sheet, target_code):

@@ -83,7 +83,7 @@ class SikelarMainApp:
         """Show the appropriate page based on tool name"""
         if tool_name == "Pengesahan":
             self.show_pengesahan_page()
-        elif tool_name == "RKAS dan BKU":
+        elif tool_name == "Rekon":
             self.show_rkas_page()
         else:
             # For any other tools, show blank page

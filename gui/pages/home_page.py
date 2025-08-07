@@ -184,7 +184,7 @@ class HomePage(BasePage):
         # RKAS dan BKU link
         rkas_link = tk.Label(
             links_container,
-            text="• RKAS dan BKU",
+            text="• Rekon",
             font=tkFont.Font(family="Segoe UI", size=10),
             bg='#2c3e50',
             fg='#4dabf7',
@@ -204,7 +204,7 @@ class HomePage(BasePage):
         pengesahan_link.pack(anchor='e', pady=(2, 0))
         
         # Make links clickable
-        rkas_link.bind('<Button-1>', lambda e: self.main_app.show_tool_page('RKAS dan BKU'))
+        rkas_link.bind('<Button-1>', lambda e: self.main_app.show_tool_page('Rekon'))
         pengesahan_link.bind('<Button-1>', lambda e: self.main_app.show_tool_page('Pengesahan'))
         
         # Add hover effects to links
@@ -296,7 +296,7 @@ class HomePage(BasePage):
         """Create the grid of tool cards with modern design"""
         tools = [
             {
-                'title': 'RKAS dan BKU',
+                'title': 'Rekon',
                 'desc': 'Upload file berbentuk excel\nuntuk analisis anggaran',
                 'color': '#4dabf7',
                 'icon': '📊',

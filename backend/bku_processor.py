@@ -587,7 +587,8 @@ class BKUDataProcessor:
 
     def extract_bku_peralatan_data(self, sheet):
         """Ekstrak data realisasi peralatan dari BKU untuk semua triwulan"""
-        target_code = '5.2.02'
+        # UBAH INI: dari target_code = '5.2.02' menjadi target_codes
+        target_codes = ['5.2.02', '5.2.04']
         
         # Initialize storage untuk semua triwulan
         self.bku_peralatan_data = {
@@ -597,62 +598,64 @@ class BKUDataProcessor:
             'Triwulan 4': []
         }
         
-        print(f"Debug: Mencari realisasi BKU untuk kode rekening: {target_code}")
+        print(f"Debug: Mencari realisasi BKU untuk kode rekening: {target_codes}")
         
         # Collect all raw data first
         raw_items = []
         
-        # Iterasi semua baris untuk mencari kode rekening
-        for row_idx in range(1, sheet.max_row + 1):
-            # Ekstrak kode rekening dari kolom F-G (merged)
-            kode_rekening = self.excel_utils.extract_merged_text_strict(sheet, row_idx, range(6, 8))
-            
-            if not kode_rekening or target_code not in kode_rekening:
-                continue
-            
-            # Ekstrak tanggal dari kolom A-C (merged)
-            tanggal_str = self.excel_utils.extract_merged_text(sheet, row_idx, range(1, 4))
-            if not tanggal_str:
-                continue
-            
-            # Parse tanggal
-            try:
-                tanggal = self._parse_date_string(tanggal_str)
-                if not tanggal:
+        # UBAH INI: Loop untuk setiap target code
+        for target_code in target_codes:
+            # Iterasi semua baris untuk mencari kode rekening
+            for row_idx in range(1, sheet.max_row + 1):
+                # Ekstrak kode rekening dari kolom F-G (merged)
+                kode_rekening = self.excel_utils.extract_merged_text_strict(sheet, row_idx, range(6, 8))
+                
+                if not kode_rekening or target_code not in kode_rekening:
                     continue
-            except:
-                continue
-            
-            # Ekstrak kode kegiatan dari kolom D-E (merged)
-            kode_kegiatan = self.excel_utils.extract_merged_text(sheet, row_idx, range(4, 6))
-            if not kode_kegiatan or not self.excel_utils.is_valid_kegiatan_format(kode_kegiatan):
-                continue
-            
-            # Ekstrak uraian dari kolom K-M (merged)
-            uraian = self.excel_utils.extract_merged_text(sheet, row_idx, range(11, 14))
-            if not uraian:
-                continue
-            
-            # Skip baris dengan kata "Terima" atau "Setor"
-            if "terima" in uraian.lower() or "setor" in uraian.lower():
-                print(f"Debug: Skipping row with Terima/Setor: {uraian}")
-                continue
-            
-            # Ekstrak jumlah pengeluaran dari kolom Q-S (merged)
-            jumlah = self.excel_utils.extract_merged_number(sheet, row_idx, range(17, 20))
-            if jumlah <= 0:
-                continue
-            
-            raw_items.append({
-                'tanggal': tanggal,
-                'kode_rekening': kode_rekening,
-                'kode_kegiatan': kode_kegiatan,
-                'uraian': uraian,
-                'jumlah': jumlah,
-                'row': row_idx
-            })
-            
-            print(f"Debug: Found BKU peralatan item - {tanggal} | {kode_rekening} | {kode_kegiatan} | {uraian} - Rp {jumlah:,}")
+                
+                # Ekstrak tanggal dari kolom A-C (merged)
+                tanggal_str = self.excel_utils.extract_merged_text(sheet, row_idx, range(1, 4))
+                if not tanggal_str:
+                    continue
+                
+                # Parse tanggal
+                try:
+                    tanggal = self._parse_date_string(tanggal_str)
+                    if not tanggal:
+                        continue
+                except:
+                    continue
+                
+                # Ekstrak kode kegiatan dari kolom D-E (merged)
+                kode_kegiatan = self.excel_utils.extract_merged_text(sheet, row_idx, range(4, 6))
+                if not kode_kegiatan or not self.excel_utils.is_valid_kegiatan_format(kode_kegiatan):
+                    continue
+                
+                # Ekstrak uraian dari kolom K-M (merged)
+                uraian = self.excel_utils.extract_merged_text(sheet, row_idx, range(11, 14))
+                if not uraian:
+                    continue
+                
+                # Skip baris dengan kata "Terima" atau "Setor"
+                if "terima" in uraian.lower() or "setor" in uraian.lower():
+                    print(f"Debug: Skipping row with Terima/Setor: {uraian}")
+                    continue
+                
+                # Ekstrak jumlah pengeluaran dari kolom Q-S (merged)
+                jumlah = self.excel_utils.extract_merged_number(sheet, row_idx, range(17, 20))
+                if jumlah <= 0:
+                    continue
+                
+                raw_items.append({
+                    'tanggal': tanggal,
+                    'kode_rekening': kode_rekening,
+                    'kode_kegiatan': kode_kegiatan,
+                    'uraian': uraian,
+                    'jumlah': jumlah,
+                    'row': row_idx
+                })
+                
+                print(f"Debug: Found BKU peralatan item - {tanggal} | {kode_rekening} | {kode_kegiatan} | {uraian} - Rp {jumlah:,}")
         
         # Group and sum items by date, kode_kegiatan, kode_rekening, and uraian
         grouped_items = self._group_and_sum_bku_items(raw_items)
@@ -667,7 +670,8 @@ class BKUDataProcessor:
 
     def extract_bku_aset_tetap_data(self, sheet):
         """Ekstrak data realisasi aset tetap lainnya dari BKU untuk semua triwulan"""
-        target_codes = ['5.2.04', '5.2.05']
+        # UBAH INI: dari target_codes = ['5.2.04', '5.2.05'] menjadi hanya ['5.2.05']
+        target_codes = ['5.2.05']
         
         # Initialize storage untuk semua triwulan
         self.bku_aset_tetap_data = {

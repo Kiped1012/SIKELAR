@@ -468,7 +468,7 @@ class PengesahanPage(BasePage):
         
         # Create appropriate message based on category
         if category == 'buku':
-            message_text = f"""Pengadaan buku melebihi ketentuan juknis yaitu sebesar {percentage:.2f}%. Seharusnya dianggarkan minimal {limit}%.
+            message_text = f"""Pengadaan buku tidak memenuhi ketentuan juknis yaitu sebesar {percentage:.2f}%. Seharusnya dianggarkan minimal {limit}%.
 
 Wajib menganggarkan pengembangan perpustakaan (buku) minimal {limit}%."""
         elif category == 'sarana':

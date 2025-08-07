@@ -4,11 +4,30 @@ Pastikan file ini dinamakan main.py atau sikelar_main.py
 """
 
 import tkinter as tk
+import os
+import sys
 from gui.main_app import SikelarMainApp  # Import class utama
+
+def resource_path(relative_path):
+    """Get absolute path to resource, works for dev and for PyInstaller"""
+    try:
+        # PyInstaller creates a temp folder and stores path in _MEIPASS
+        base_path = sys._MEIPASS
+    except Exception:
+        base_path = os.path.abspath(".")
+    return os.path.join(base_path, relative_path)
 
 def main():
     """Main function to run SIKELAR application"""
     root = tk.Tk()
+    
+    # Set window icon (untuk taskbar saat aplikasi berjalan)
+    try:
+        icon_path = resource_path("sikelar_logo3.ico")
+        root.iconbitmap(icon_path)
+        print(f"Icon loaded successfully from: {icon_path}")
+    except Exception as e:
+        print(f"Could not load window icon: {e}")
     
     # Set window properties
     root.title("SIKELAR - Sistem Informasi Pengelompokan Anggaran")
@@ -38,4 +57,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

@@ -147,7 +147,7 @@ class RKASPage(BasePage):  # Inherit dari BasePage
         # RKAS dan BKU link
         rkas_link = tk.Label(
             links_container,
-            text="• RKAS dan BKU",
+            text="• Rekon",
             font=tkFont.Font(family="Segoe UI", size=10),
             bg='#2c3e50',
             fg='#4dabf7',
@@ -167,7 +167,7 @@ class RKASPage(BasePage):  # Inherit dari BasePage
         pengesahan_link.pack(anchor='e', pady=(2, 0))
         
         # Make links clickable
-        rkas_link.bind('<Button-1>', lambda e: self.main_app.show_tool_page('RKAS dan BKU'))
+        rkas_link.bind('<Button-1>', lambda e: self.main_app.show_tool_page('Rekon'))
         pengesahan_link.bind('<Button-1>', lambda e: self.main_app.show_tool_page('Pengesahan'))
         
         # Add hover effects to links
@@ -488,6 +488,44 @@ class RKASPage(BasePage):  # Inherit dari BasePage
                     except Exception as e:
                         print(f"Error processing {triwulan}: {e}")
                         continue
+
+                # Laporan Keuangan Section
+                story.append(Paragraph("LAPORAN KEUANGAN REALISASI", subtitle_style))
+                
+                # Get laporan keuangan data for TW4 (full year)
+                laporan_data = self.processor.get_laporan_keuangan_data_by_triwulan("Triwulan 4")
+                
+                if laporan_data and laporan_data.get('grand_total', 0) > 0:
+                    # Laporan keuangan table data
+                    laporan_table_data = [
+                        ['Kategori', 'Jumlah (Rp)'],
+                        ['PAKAI HABIS', FormatUtils.format_currency(laporan_data['total_belanja_persediaan'])],
+                        ['BARANG DAN JASA', FormatUtils.format_currency(laporan_data['total_barang_dan_jasa'])],
+                        ['PERALATAN DAN MESIN', FormatUtils.format_currency(laporan_data['total_peralatan_mesin'])],
+                        ['ASET TETAP LAINNYA', FormatUtils.format_currency(laporan_data['total_aset_tetap'])],
+                        ['TOTAL REALISASI', FormatUtils.format_currency(laporan_data['grand_total'])]
+                    ]
+                    
+                    # Create laporan table
+                    laporan_table = Table(laporan_table_data, colWidths=[available_width * 0.7, available_width * 0.3])
+                    laporan_table.setStyle(TableStyle([
+                        ('BACKGROUND', (0, 0), (-1, 0), colors.grey),
+                        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+                        ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+                        ('ALIGN', (1, 0), (1, -1), 'RIGHT'),
+                        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                        ('FONTSIZE', (0, 0), (-1, 0), 10),
+                        ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
+                        ('FONTSIZE', (0, 1), (-1, -1), 8),
+                        ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+                        ('BACKGROUND', (0, 1), (-1, 4), colors.lightblue),  # Category items
+                        ('BACKGROUND', (0, 5), (-1, 5), colors.lightcoral),  # Total
+                        ('FONTNAME', (0, 1), (-1, -1), 'Helvetica-Bold'),
+                        ('GRID', (0, 0), (-1, -1), 1, colors.black)
+                    ]))
+                    
+                    story.append(laporan_table)
+                    story.append(Spacer(1, 15))
             else:
                 story.append(Paragraph("Data BKU tidak tersedia", normal_style))
             
@@ -817,16 +855,16 @@ class RKASPage(BasePage):  # Inherit dari BasePage
         bku_title.pack(side='left', padx=10, pady=10)
         
         # Triwulan Dropdown Frame (right side of header)
-        dropdown_frame = tk.Frame(bku_header_frame, bg='#e74c3c')
-        dropdown_frame.pack(side='right', padx=10, pady=10)
+        self.dropdown_frame = tk.Frame(bku_header_frame, bg='#e74c3c')
+        self.dropdown_frame.pack(side='right', padx=10, pady=10)
         
-        # Triwulan Dropdown
-        self.triwulan_combobox = ttk.Combobox(dropdown_frame, 
-                                             textvariable=self.selected_triwulan,
-                                             values=["Triwulan 1", "Triwulan 2", "Triwulan 3", "Triwulan 4"],
-                                             state="readonly",
-                                             font=('Arial', 10, 'bold'),
-                                             width=12)
+        # Triwulan Dropdown - MODIFIED: Remove "Laporan Keuangan" by default
+        self.triwulan_combobox = ttk.Combobox(self.dropdown_frame, 
+                                            textvariable=self.selected_triwulan,
+                                            values=["Triwulan 1", "Triwulan 2", "Triwulan 3", "Triwulan 4"],  # Default values without Laporan Keuangan
+                                            state="readonly",
+                                            font=('Arial', 10, 'bold'),
+                                            width=12)  # Reduce width since no "Laporan Keuangan"
         self.triwulan_combobox.pack(side='right')
         
         # Bind dropdown selection event
@@ -855,6 +893,22 @@ class RKASPage(BasePage):  # Inherit dari BasePage
         
         # Placeholder content for BKU section
         self._create_bku_placeholder()
+
+    # Tambahkan method baru untuk update dropdown values
+    def _update_dropdown_values(self, tab_name):
+        """Update dropdown values based on active tab"""
+        if tab_name == "Ringkasan":
+            # Include "Laporan Keuangan" for Ringkasan tab
+            dropdown_values = ["Triwulan 1", "Triwulan 2", "Triwulan 3", "Triwulan 4", "Laporan Keuangan"]
+            self.triwulan_combobox.configure(values=dropdown_values, width=15)
+        else:
+            # Only Triwulan options for other tabs
+            dropdown_values = ["Triwulan 1", "Triwulan 2", "Triwulan 3", "Triwulan 4"]
+            self.triwulan_combobox.configure(values=dropdown_values, width=12)
+            
+            # If currently showing "Laporan Keuangan", switch to default Triwulan
+            if self.selected_triwulan.get() == "Laporan Keuangan":
+                self.selected_triwulan.set("Triwulan 1")
 
     def _create_bku_placeholder(self):
         """Create placeholder content for BKU section - FIXED untuk include Belanja Jasa"""
@@ -894,9 +948,22 @@ class RKASPage(BasePage):  # Inherit dari BasePage
             placeholder_label.pack(expand=True)
 
     def on_triwulan_changed(self, event=None):
-        """Handle triwulan dropdown selection change - FIXED untuk include semua kategori"""
+        """Handle triwulan dropdown selection change - UPDATED dengan conditional Laporan Keuangan"""
         selected = self.selected_triwulan.get()
         print(f"Triwulan dipilih: {selected}")
+        
+        # Check if Laporan Keuangan selected - only allowed in Ringkasan tab
+        if selected == "Laporan Keuangan":
+            if self.active_tab != "Ringkasan":
+                # Reset to default if not in Ringkasan tab
+                self.selected_triwulan.set("Triwulan 1")
+                selected = "Triwulan 1"
+                messagebox.showwarning("Peringatan", "Laporan Keuangan hanya tersedia di tab Ringkasan!")
+            else:
+                # Determine current triwulan based on active tab or default to TW4
+                current_tw = "Triwulan 4"  # Default atau bisa diambil dari logika lain
+                self._display_laporan_keuangan(current_tw)
+                return
         
         # Check if we're currently on Ringkasan tab
         if self.active_tab == "Ringkasan":
@@ -905,20 +972,118 @@ class RKASPage(BasePage):  # Inherit dari BasePage
                 self._display_bku_summary_for_triwulan(selected)
             return
         
-        # FIXED: Update untuk semua kategori yang mendukung BKU, termasuk Jasa
+        # For other supported categories
         supported_categories = ["Belanja Persediaan", "Pemeliharaan", "Perjalanan Dinas", "Peralatan", "Aset Tetap", "Belanja Jasa"]
         
         if self.active_tab in supported_categories:
-            # FIXED: Gunakan mapping yang konsisten
             category_map = {
                 "Belanja Persediaan": "Belanja Persediaan",
                 "Pemeliharaan": "Pemeliharaan", 
                 "Perjalanan Dinas": "Perjalanan Dinas",
                 "Peralatan": "Peralatan",
                 "Aset Tetap": "Aset Tetap",
-                "Belanja Jasa": "Belanja Jasa"  # FIXED: gunakan nama yang sama
+                "Belanja Jasa": "Belanja Jasa"
             }
             self._display_bku_for_category(category_map[self.active_tab])
+
+    def _display_laporan_keuangan(self, current_triwulan):
+        """Display laporan keuangan data sampai triwulan saat ini"""
+        # Clear current BKU content
+        for widget in self.bku_frame.winfo_children():
+            widget.destroy()
+            
+        # Reset BKU canvas scroll position to top
+        self.bku_canvas.yview_moveto(0)
+        
+        # Check if BKU data is available
+        if not hasattr(self.processor, 'bku_data_available') or not self.processor.bku_data_available:
+            self._create_bku_placeholder()
+            return
+        
+        # Get laporan keuangan data
+        laporan_data = self.processor.get_laporan_keuangan_data_by_triwulan(current_triwulan)
+        
+        if not laporan_data or laporan_data.get('grand_total', 0) == 0:
+            # No data
+            no_data_label = tk.Label(self.bku_frame, 
+                                text="Tidak ada data laporan keuangan", 
+                                font=('Arial', 14, 'bold'), 
+                                fg='#e74c3c', bg='#ffffff', pady=30)
+            no_data_label.pack(expand=True)
+            return
+        
+        # Title frame
+        title_frame = tk.Frame(self.bku_frame, bg='#ffffff')
+        title_frame.pack(fill='x', pady=(20, 10))
+        
+        title_label = tk.Label(title_frame, 
+                            text=f"Laporan Keuangan Realisasi", 
+                            font=('Arial', 14, 'bold'), 
+                            bg='#ffffff', fg='#2c3e50')
+        title_label.pack()
+        
+        # Create table frame
+        table_frame = tk.Frame(self.bku_frame, bg='#ffffff')
+        table_frame.pack(fill='both', expand=True, padx=10, pady=10)
+        
+        # Create treeview for laporan data
+        columns = ('Kategori', 'Jumlah (Rp)')
+        tree = ttk.Treeview(table_frame, columns=columns, show='headings', height=15)
+        
+        # Configure column headings and widths
+        for col in columns:
+            tree.heading(col, text=col)
+        
+        tree.column('Kategori', width=320, anchor='w')
+        tree.column('Jumlah (Rp)', width=160, anchor='w')
+        
+        # Data laporan keuangan
+        laporan_items = [
+            ("PAKAI HABIS", laporan_data['total_belanja_persediaan'], True),
+            ("BARANG DAN JASA", laporan_data['total_barang_dan_jasa'], True),
+            ("PERALATAN DAN MESIN", laporan_data['total_peralatan_mesin'], True),
+            ("ASET TETAP LAINNYA", laporan_data['total_aset_tetap'], True),
+            ("", "", False),  # Separator
+            ("TOTAL REALISASI", laporan_data['grand_total'], "total")
+        ]
+        
+        # Insert data into table
+        for kategori, jumlah, style in laporan_items:
+            # Handle empty separator row
+            if kategori == "" and jumlah == "":
+                tree.insert('', 'end', values=("", ""))
+                continue
+            
+            formatted_jumlah = FormatUtils.format_currency(jumlah)
+            item_id = tree.insert('', 'end', values=(kategori, formatted_jumlah))
+            
+            # Set background color based on style
+            if style == True:  # Category items
+                tree.tag_configure('category', background='#3498db', foreground='white')
+                tree.item(item_id, tags=('category',))
+            elif style == "total":  # Total row
+                tree.tag_configure('total_highlight', background='#e74c3c', foreground='white')
+                tree.item(item_id, tags=('total_highlight',))
+        
+        # Add scrollbar
+        scrollbar = ttk.Scrollbar(table_frame, orient='vertical', command=tree.yview)
+        tree.configure(yscrollcommand=scrollbar.set)
+        tree.pack(side='left', fill='both', expand=True)
+        scrollbar.pack(side='right', fill='y')
+        
+        # Summary section
+        summary_frame = tk.Frame(self.bku_frame, bg='#ecf0f1', relief='raised', bd=1)
+        summary_frame.pack(fill='x', padx=10, pady=10)
+        
+        # School name
+        school_label = tk.Label(summary_frame, 
+                            text=f"SEKOLAH {self.processor.nama_sekolah}", 
+                            font=('Arial', 10, 'bold'), bg='#ecf0f1', fg='#2c3e50')
+        school_label.pack(anchor='w', pady=(10, 5), padx=10)
+        
+        # Update canvas scroll region
+        self.bku_frame.update_idletasks()
+        self.bku_canvas.configure(scrollregion=self.bku_canvas.bbox("all"))
 
     def _display_bku_for_category(self, category):
         """Display BKU data for specific category with appropriate summary format - FIXED"""
@@ -1923,8 +2088,9 @@ class RKASPage(BasePage):  # Inherit dari BasePage
         self.scrollable_button_frame.update_idletasks()
         self.button_canvas.configure(scrollregion=self.button_canvas.bbox("all"))
 
+    # Modifikasi method _handle_button_click untuk update dropdown
     def _handle_button_click(self, command, tab_name):
-        """Handle button click with highlighting"""
+        """Handle button click with highlighting and dropdown update"""
         # Reset all button colors
         for name, (btn, orig_color) in self.tab_buttons.items():
             btn.config(bg=orig_color)
@@ -1936,6 +2102,9 @@ class RKASPage(BasePage):  # Inherit dari BasePage
         
         # Set active tab
         self.active_tab = tab_name
+        
+        # Update dropdown values based on tab
+        self._update_dropdown_values(tab_name)
         
         # Execute command
         command()

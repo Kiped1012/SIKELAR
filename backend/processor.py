@@ -59,6 +59,59 @@ class BOSDataProcessor:
         print(f"Debug: RKAS - Found {len(self.rkas_processor.aset_tetap_items)} aset tetap items")
         print(f"Debug: BKU - Data available: {self.bku_processor.bku_data_available}")
 
+    def get_laporan_keuangan_data_by_triwulan(self, current_triwulan):
+        """Get laporan keuangan data dari TW1 sampai current triwulan"""
+        if not self.bku_data_available:
+            return None
+        
+        triwulan_order = ["Triwulan 1", "Triwulan 2", "Triwulan 3", "Triwulan 4"]
+        current_index = triwulan_order.index(current_triwulan)
+        
+        # Initialize totals
+        total_belanja_persediaan = 0
+        total_barang_dan_jasa = 0
+        total_peralatan_mesin = 0
+        total_aset_tetap = 0
+        
+        # Sum dari TW1 sampai current triwulan
+        for i in range(current_index + 1):
+            triwulan = triwulan_order[i]
+            
+            # Belanja Persediaan (pakai habis)
+            persediaan_data = self.get_bku_belanja_persediaan_by_triwulan(triwulan)
+            if persediaan_data:
+                total_belanja_persediaan += sum(item['jumlah'] for item in persediaan_data)
+            
+            # Barang dan Jasa (jasa + pemeliharaan + perjalanan)
+            jasa_data = self.get_bku_belanja_jasa_by_triwulan(triwulan)
+            pemeliharaan_data = self.get_bku_belanja_pemeliharaan_by_triwulan(triwulan)
+            perjalanan_data = self.get_bku_belanja_perjalanan_by_triwulan(triwulan)
+            
+            if jasa_data:
+                total_barang_dan_jasa += sum(item['jumlah'] for item in jasa_data)
+            if pemeliharaan_data:
+                total_barang_dan_jasa += sum(item['jumlah'] for item in pemeliharaan_data)
+            if perjalanan_data:
+                total_barang_dan_jasa += sum(item['jumlah'] for item in perjalanan_data)
+            
+            # Peralatan dan Mesin
+            peralatan_data = self.get_bku_peralatan_by_triwulan(triwulan)
+            if peralatan_data:
+                total_peralatan_mesin += sum(item['jumlah'] for item in peralatan_data)
+            
+            # Aset Tetap
+            aset_tetap_data = self.get_bku_aset_tetap_by_triwulan(triwulan)
+            if aset_tetap_data:
+                total_aset_tetap += sum(item['jumlah'] for item in aset_tetap_data)
+        
+        return {
+            'total_belanja_persediaan': total_belanja_persediaan,
+            'total_barang_dan_jasa': total_barang_dan_jasa,
+            'total_peralatan_mesin': total_peralatan_mesin,
+            'total_aset_tetap': total_aset_tetap,
+            'grand_total': total_belanja_persediaan + total_barang_dan_jasa + total_peralatan_mesin + total_aset_tetap
+        }
+
     # Properties untuk kompatibilitas dengan kode existing
     @property
     def excel_data(self):
