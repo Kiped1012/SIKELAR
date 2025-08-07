@@ -1135,14 +1135,14 @@ class RKASPage(BasePage):  # Inherit dari BasePage
                 self._handle_no_bku_data(selected_triwulan)
         elif category == "Peralatan":
             bku_data = self.processor.get_bku_peralatan_by_triwulan(selected_triwulan)
-            title = f"Realisasi Peralatan dan Mesin (5.2.02) - {selected_triwulan}"
+            title = f"Realisasi Peralatan dan Mesin (5.2.02 & 5.2.04) - {selected_triwulan}"
             if bku_data:
                 self._display_bku_data_generic(selected_triwulan, bku_data, title)
             else:
                 self._handle_no_bku_data(selected_triwulan)
         elif category == "Aset Tetap":
             bku_data = self.processor.get_bku_aset_tetap_by_triwulan(selected_triwulan)
-            title = f"Realisasi Aset Tetap Lainnya (5.2.04 & 5.2.05) - {selected_triwulan}"
+            title = f"Realisasi Aset Tetap Lainnya (5.2.05) - {selected_triwulan}"
             if bku_data:
                 self._display_bku_data_generic(selected_triwulan, bku_data, title)
             else:
@@ -1918,7 +1918,7 @@ class RKASPage(BasePage):  # Inherit dari BasePage
         
         # Display RKAS data
         self.display_standard_results(self.processor.peralatan_items,
-                                    "Rincian Peralatan dan Mesin (5.2.02)",
+                                    "Rincian Peralatan dan Mesin (5.2.02 & 5.2.04)",
                                     "Total Peralatan")
         
         # AUTO-DISPLAY BKU DATA
@@ -1930,7 +1930,7 @@ class RKASPage(BasePage):  # Inherit dari BasePage
             messagebox.showwarning("Peringatan", "Data dalam kategori tersebut tidak ada atau file belum diupload!")
             return
         self.display_standard_results(self.processor.aset_tetap_items,
-                                    "Rincian Aset Tetap Lainnya (5.2.04 & 5.2.05)",
+                                    "Rincian Aset Tetap Lainnya (5.2.05)",
                                     "Total Aset Tetap Lainnya")
         
         # Clear BKU section for non-supported categories
