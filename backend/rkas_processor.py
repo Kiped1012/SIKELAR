@@ -139,7 +139,7 @@ class RKASDataProcessor:
             print("Debug: Menggunakan default total penerimaan: Rp 799,500,000")
 
     def extract_budget_data(self, sheet):
-        """Ekstrak data budget berdasarkan kode kegiatan di kolom G"""
+        """Ekstrak data budget berdasarkan kode kegiatan di kolom G - FIXED VERSION"""
         all_target_codes = (self.kategori_kode['honor'])
         
         print(f"Debug: Mencari kode: {all_target_codes}")
@@ -156,26 +156,51 @@ class RKASDataProcessor:
             
             # Cek apakah kode ini cocok dengan yang dicari
             for target_code in all_target_codes:
-                if target_code in kode_value:
-                    print(f"Debug: Menemukan kode {target_code} di baris {row_idx}: {kode_value}")
-                    
-                    # Ekstrak uraian dari kolom H-M (merged)
-                    uraian = self.excel_utils.extract_merged_text(sheet, row_idx, range(8, 14))
-                    
-                    # Ekstrak jumlah dari kolom N-O (merged)
-                    jumlah = self.excel_utils.extract_merged_number(sheet, row_idx, range(14, 16))
-                    
-                    if uraian and jumlah > 0:
-                        # Cek apakah kode sudah ada (hindari duplikasi)
-                        existing = next((item for item in self.budget_items if item['kode'] == target_code), None)
-                        if not existing:
-                            self.budget_items.append({
-                                'kode': target_code,
-                                'uraian': uraian,
-                                'jumlah': jumlah
-                            })
-                            print(f"Debug: Added - {target_code}: {uraian} - Rp {jumlah:,}")
-                    break
+                # PERBAIKAN: Gunakan exact match untuk honor (07.12)
+                if target_code == '07.12':
+                    # Untuk honor, pastikan kode persis "07.12" atau dimulai dengan "07.12."
+                    if kode_value == target_code or kode_value.startswith(target_code + '.'):
+                        print(f"Debug: Menemukan kode honor {target_code} di baris {row_idx}: {kode_value}")
+                        
+                        # Ekstrak uraian dari kolom H-M (merged)
+                        uraian = self.excel_utils.extract_merged_text(sheet, row_idx, range(8, 14))
+                        
+                        # Ekstrak jumlah dari kolom N-O (merged)
+                        jumlah = self.excel_utils.extract_merged_number(sheet, row_idx, range(14, 16))
+                        
+                        if uraian and jumlah > 0:
+                            # Cek apakah kode sudah ada (hindari duplikasi)
+                            existing = next((item for item in self.budget_items if item['kode'] == target_code), None)
+                            if not existing:
+                                self.budget_items.append({
+                                    'kode': target_code,
+                                    'uraian': uraian,
+                                    'jumlah': jumlah
+                                })
+                                print(f"Debug: Added - {target_code}: {uraian} - Rp {jumlah:,}")
+                        break
+                else:
+                    # Untuk kode lain, gunakan logika contains seperti sebelumnya
+                    if target_code in kode_value:
+                        print(f"Debug: Menemukan kode {target_code} di baris {row_idx}: {kode_value}")
+                        
+                        # Ekstrak uraian dari kolom H-M (merged)
+                        uraian = self.excel_utils.extract_merged_text(sheet, row_idx, range(8, 14))
+                        
+                        # Ekstrak jumlah dari kolom N-O (merged)
+                        jumlah = self.excel_utils.extract_merged_number(sheet, row_idx, range(14, 16))
+                        
+                        if uraian and jumlah > 0:
+                            # Cek apakah kode sudah ada (hindari duplikasi)
+                            existing = next((item for item in self.budget_items if item['kode'] == target_code), None)
+                            if not existing:
+                                self.budget_items.append({
+                                    'kode': target_code,
+                                    'uraian': uraian,
+                                    'jumlah': jumlah
+                                })
+                                print(f"Debug: Added - {target_code}: {uraian} - Rp {jumlah:,}")
+                        break
 
     def extract_belanja_persediaan_data(self, sheet):
         """Ekstrak data belanja persediaan berdasarkan kode rekening di kolom D-F (merged) - STRICT VERSION"""
